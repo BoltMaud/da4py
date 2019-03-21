@@ -2,9 +2,8 @@
 
 """
 from abc import ABCMeta, abstractmethod
-import warnings
 
-class cnf_formula:
+class Cnf_formula:
     def __init__(self, nbVars, listOfClauses):
         self.nbVars=nbVars
         self.listOfClauses=listOfClauses
@@ -27,7 +26,7 @@ class cnf_formula:
             #todo
 
 
-class qbf_formula:
+class Qbf_formula:
     __metaclass__ = metaclass=ABCMeta
 
     @abstractmethod
@@ -38,11 +37,7 @@ class qbf_formula:
     def negation(self):
         pass
 
-class NoQuantification(Exception):
-    def __str__(self):
-       return repr("No quantification allowed for this method")
-
-class operator(qbf_formula):
+class Operator(Qbf_formula):
     def __init__(self, type, positiveVariables, negatieVariables, qbf_formulas):
         self.type = type
         self.positiveVariables = positiveVariables
@@ -72,12 +67,12 @@ class operator(qbf_formula):
             return And(self.negativeVariabes,self.positiveVariables,newQbflist)
 
     def distributeImplication(self,var):
-        raise NoQuantification
+        pass
 
     def clausesToCnf(self,nbVars):
-        raise NoQuantification
+        pass
 
-class And(operator):
+class And(Operator):
     def __init__(self, positiveVariables, negatieVariables, qbf_formulas):
         self.type = "&&"
         self.positiveVariables = positiveVariables
@@ -93,10 +88,10 @@ class And(operator):
         dnfPositiveVariables = [([v],[]) for v in self.positiveVariables]
         dnfNegativeVariables = [([],[v]) for v in self.negativeVariabes]
         left = [ formula.clausesToCnf(nbVars) for formula in self.qbf_formulas]
-        return cnf_formula(nbVars,dnfPositiveVariables + dnfNegativeVariables + left)
+        return Cnf_formula(nbVars,dnfPositiveVariables + dnfNegativeVariables + left)
 
 
-class Or(operator):
+class Or(Operator):
     def __init__(self, positiveVariables, negatieVariables, qbf_formulas):
         self.type = "||"
         self.positiveVariables = positiveVariables
@@ -114,9 +109,9 @@ class Or(operator):
             implications=[]
             for i in range (1,len(self.qbf_formulas)+1):
                 implications.append(self.qbf_formulas[i].distributeImplication(nbVars+1+i))
-            return cnf_formula(nbVars+len(self.qbf_formulas),And([],[],implications).clausesToCnf(nbVars).append(dnf))
+            return Cnf_formula(nbVars+len(self.qbf_formulas),And([],[],implications).clausesToCnf(nbVars).append(dnf))
 
-class pb_constraint :
+class Pb_constraint :
     def __init__(self,type,weightedVariables,threshold):
         self.type=type
         self.weightedVariables=weightedVariables
@@ -130,7 +125,7 @@ class pb_constraint :
         result+=self.type + " " +self.threshold+"\n"
         return result
 
-class pb_formula:
+class Pb_formula:
     def __init__(self,listOfContraints,nbVars,pbObjective=[]):
         self.listOfConstraints=listOfContraints
         self.pbObjective= pbObjective
@@ -150,25 +145,25 @@ class pb_formula:
 
 
 
-class PB_leq(pb_constraint):
+class PB_leq(Pb_constraint):
     def __init__(self,weightedVariables,threshold):
         self.type="<="
         self.weightedVariables=weightedVariables
         self.threshold=threshold
 
-class PB_geq(pb_constraint):
+class PB_geq(Pb_constraint):
     def __init__(self,weightedVariables,threshold):
         self.type=">="
         self.weightedVariables=weightedVariables
         self.threshold=threshold
 
-class PB_eq(pb_constraint):
+class PB_eq(Pb_constraint):
     def __init__(self,weightedVariables,threshold):
         self.type="="
         self.weightedVariables=weightedVariables
         self.threshold=threshold
 
-class pb_objective:
+class Pb_objective:
     def __init__(self,weightedVariables):
         self.weightedVariables=weightedVariables
 
