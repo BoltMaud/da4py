@@ -2,11 +2,30 @@
 
 """
 from abc import ABCMeta, abstractmethod
+import warnings
 
-class cnf:
-    def __init__(self,nbVars,listOfVars):
+class cnf_formula:
+    def __init__(self, nbVars, listOfClauses):
         self.nbVars=nbVars
-        self.listOfVars=listOfVars
+        self.listOfClauses=listOfClauses
+
+    def cnfToDIMACS(self,file):
+        writer=open(file,"w")
+        writer.write("p cnf "+self.nbVars+ " "+len(self.listOfClauses)+"\n")
+        for (pos, neg ) in self.listOfClauses:
+            for p in pos :
+                writer.write(p +" ")
+            for n in neg :
+                writer.write(n*(-1)+ " ")
+            writer.write(0+"\n")
+        writer.close()
+
+    def cnfToPb(self):
+        PB_list=[]
+        for (pos, neg) in self.listOfClauses:
+            PB_geq([(1,p) for p in pos]+ [(-1,n) for n in neg],1-len(neg))
+            #todo
+
 
 class qbf_formula:
     __metaclass__ = metaclass=ABCMeta
@@ -74,7 +93,7 @@ class And(operator):
         dnfPositiveVariables = [([v],[]) for v in self.positiveVariables]
         dnfNegativeVariables = [([],[v]) for v in self.negativeVariabes]
         left = [ formula.clausesToCnf(nbVars) for formula in self.qbf_formulas]
-        return cnf(nbVars,dnfPositiveVariables + dnfNegativeVariables + left)
+        return cnf_formula(nbVars,dnfPositiveVariables + dnfNegativeVariables + left)
 
 
 class Or(operator):
@@ -95,13 +114,41 @@ class Or(operator):
             implications=[]
             for i in range (1,len(self.qbf_formulas)+1):
                 implications.append(self.qbf_formulas[i].distributeImplication(nbVars+1+i))
-            return cnf(nbVars+len(self.qbf_formulas),And([],[],implications).clausesToCnf(nbVars).append(dnf))
+            return cnf_formula(nbVars+len(self.qbf_formulas),And([],[],implications).clausesToCnf(nbVars).append(dnf))
 
 class pb_constraint :
     def __init__(self,type,weightedVariables,threshold):
         self.type=type
         self.weightedVariables=weightedVariables
         self.threshold=threshold
+        self.nbVariables= len(weightedVariables)
+
+    def __str__(self):
+        result=""
+        for ( weight, variable ) in self.weightedVariables:
+            result+=weight +" x"+ variable+" ";
+        result+=self.type + " " +self.threshold+"\n"
+        return result
+
+class pb_formula:
+    def __init__(self,listOfContraints,nbVars,pbObjective=[]):
+        self.listOfConstraints=listOfContraints
+        self.pbObjective= pbObjective
+        self.nbVariables=nbVars
+
+    def pbformulaToOpb(self,file,pbSolver):
+        if pbSolver in ["sat4j"]:
+            self.nbVariables+=1
+        writer=open(file,"w")
+        writer.write("* #variable= "+self.nbVariables+ " #constraint= "+len(self.listOfConstraints)+"\n")
+        writer.write("min: ")
+        for ( weight, variable ) in self.pbObjective:
+            writer.write(weight +" x"+ variable+" ")
+        for constraint in self.listOfConstraints:
+            writer.write(constraint.toString())
+        writer.close()
+
+
 
 class PB_leq(pb_constraint):
     def __init__(self,weightedVariables,threshold):
@@ -124,6 +171,7 @@ class PB_eq(pb_constraint):
 class pb_objective:
     def __init__(self,weightedVariables):
         self.weightedVariables=weightedVariables
+
 
 
 
