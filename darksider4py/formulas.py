@@ -143,8 +143,6 @@ class Pb_formula:
             writer.write(constraint.toString())
         writer.close()
 
-
-
 class PB_leq(Pb_constraint):
     def __init__(self,weightedVariables,threshold):
         self.type="<="
