@@ -1,4 +1,4 @@
-import petrinet as pn
+from darksider4py import petrinet as pn
 
 class NetSystem(pn.PetriNet):
     def __init__(self):
@@ -34,7 +34,7 @@ class NetSystem(pn.PetriNet):
 
 
 sys = NetSystem()
-sys.NetSystemFromPNML("./pnml/SM1-CM.pnml")
+sys.NetSystemFromPNML("../examples/example.pnml")
 
 
 
