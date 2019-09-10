@@ -1,14 +1,23 @@
-"""
 
-"""
 from abc import ABCMeta, abstractmethod
 
 class Cnf_formula:
+    '''
+    Conjunctive normal form formulas
+    @:param nbVars (int) : number of variables
+    @:param listOfClauses [([pos1, pos2 ...],[neg1, neg2..]), ([pos1, pos2 ...],[neg1, neg2..])] (list of couples of list) :
+    list of clauses, each clause is a couple of two lists of variables : positive and negative
+    '''
     def __init__(self, nbVars, listOfClauses):
         self.nbVars=nbVars
         self.listOfClauses=listOfClauses
 
     def cnfToDIMACS(self,file):
+        '''
+        write the clauses in a dimacs file
+        :param file (string) : name
+        :return (void)
+        '''
         writer=open(file,"w")
         writer.write("p cnf "+self.nbVars+ " "+len(self.listOfClauses)+"\n")
         for (pos, neg ) in self.listOfClauses:
@@ -20,13 +29,22 @@ class Cnf_formula:
         writer.close()
 
     def cnfToPb(self):
+        '''
+        Pb formulas have weights
+        :return PB_list (list of >= formulas)
+        '''
         PB_list=[]
         for (pos, neg) in self.listOfClauses:
-            PB_geq([(1,p) for p in pos]+ [(-1,n) for n in neg],1-len(neg))
-            #todo
+            # weight = 1 if positive, weight = - 1 if negative and sum is greater of equal to 1-negatives
+            PB_list.append(PB_geq([(1,p) for p in pos]+ [(-1,n) for n in neg],1-len(neg)))
+        return  PB_list
 
 
 class Qbf_formula:
+    '''
+    abstract class
+    Quantified boolean formulas
+    '''
     __metaclass__ = metaclass=ABCMeta
 
     @abstractmethod
@@ -38,18 +56,27 @@ class Qbf_formula:
         pass
 
 class Operator(Qbf_formula):
+    '''
+    && and || formulas
+    '''
     def __init__(self, type, positiveVariables, negatieVariables, qbf_formulas):
+        '''
+        :param type (string) : "&&" or "||"
+        :param positiveVariables (list of int)
+        :param negatieVariables (list of int)
+        :param qbf_formulas (list of QBF)
+        '''
         self.type = type
         self.positiveVariables = positiveVariables
         self.negativeVariabes = negatieVariables
         self.qbf_formulas = qbf_formulas
 
     def simplify(self):
+        '''
+        :return: QBF_formulas (only Operator)
+        '''
         if len(self.positiveVariables) == 0 and len(self.negativeVariabes)==0 and len(self.qbf_formulas)==1:
             return self.qbf_formulas[0].simplify()
-
-    def simplify(self):
-        super()
         newQbflist = [qbf.simplify() for qbf in self.qbf_formulas]
         if len(self.qbf_formulas) == 1 and self.qbf_formulas[0].type == "&&":
             self.positiveVariables = self.qbf_formulas[0].positiveVariables + self.positiveVariables
@@ -66,9 +93,11 @@ class Operator(Qbf_formula):
         if self.type=="||":
             return And(self.negativeVariabes,self.positiveVariables,newQbflist)
 
+    @abstractmethod
     def distributeImplication(self,var):
         pass
 
+    @abstractmethod
     def clausesToCnf(self,nbVars):
         pass
 
@@ -80,9 +109,11 @@ class And(Operator):
         self.qbf_formulas = qbf_formulas
 
     def distributeImplication(self,var):
-        self.positiveVariables = [Or(positiveVariable,[var],[]) for positiveVariable in self.positiveVariables]
-        self.negativeVariabes = [Or([],[negativeVariable,var],[]) for negativeVariable in self.negativeVariabes]
-        self.qbf_formulas = [Or([],[var],[formula]) for formula in self.qbf_formulas]
+        self.qbf_formulas = [Or(positiveVariable,[var],[]) for positiveVariable in self.positiveVariables]+ \
+                            [Or([],[negativeVariable,var],[]) for negativeVariable in self.negativeVariabes]+\
+                            [Or([],[var],[formula]) for formula in self.qbf_formulas]
+        self.positiveVariables = []
+        self.negativeVariabes = []
 
     def clausesToCnf(self,nbVars):
         dnfPositiveVariables = [([v],[]) for v in self.positiveVariables]

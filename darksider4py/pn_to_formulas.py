@@ -1,6 +1,7 @@
-
-from formulas import And,Or
-
+from darksider4py.formulas import Or, And
+import sys
+sys.path.append('../pm4py-source')
+from pm4py.objects.petri import importer
 
 def is_run(n, pn, m_ip,lambda_ia,sigma):
     positives = [m_ip([0,m]) for m in pn.initialMarking]
@@ -43,3 +44,8 @@ def is_transition(pn,transition,i,m_ip):
             formulas.append(Or([],[],[And([m_ip([i,place.id]),m_ip([i-1,place.id])],[],[]),
                                       And([],[m_ip([i,place.id]),m_ip([i-1,place.id])],[])]))
     And([],[],formulas)
+
+
+net, m0, mf = importer.pnml.import_net("../examples/example.pnml")
+print(m0)
+
