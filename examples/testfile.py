@@ -13,9 +13,10 @@ from pm4py.visualization.petrinet import factory as vizu
 
 net, m0, mf = importer.pnml.import_net("../examples/dev.pnml")
 #vizu.apply(net, m0,mf).view()
-variables=vg.variablesGenerator()
+variables=vg.VariablesGenerator()
 formulas = petri_net_to_SAT(net, m0,mf,variables,10)
+#print(formulas.__repr__(variables))
+variables.getVarName(2)
 cnf= formulas.clausesToCnf(variables.iterator)
 
-print(cnf.nbVars)
-[print(t) for t in cnf.listOfClauses]
+#[print(t) for t in cnf.listOfClauses]

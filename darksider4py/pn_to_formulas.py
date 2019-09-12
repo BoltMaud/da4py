@@ -54,16 +54,17 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     :param sigma (list of char) : transition name
     :return: a boolean formulas
     '''
+
     # we need a ordered list to get int per place/transition (for the variablesgenerator)
     transitions=[t for t in net.transitions]
     places=[p for p in net.places]
 
     # we create the number of variables needed for the markings
-    variablesGenerator.add(label_m, [(0,size_of_run),(0,len(places)-1)])
+    variablesGenerator.add(label_m, [(0,size_of_run),(0,len(places))])
 
     # we create the number of variables needed for the transitions
-    variablesGenerator.add(label_t, [(0,size_of_run-1),(0,len(transitions)-1)])
-    return is_run(size_of_run, places, transitions,m0,variablesGenerator.get(label_m),variablesGenerator.get(label_t))
+    variablesGenerator.add(label_t, [(0,size_of_run-1),(0,len(transitions))])
+    return is_run(size_of_run, places, transitions,m0,variablesGenerator.getfunction(label_m),variablesGenerator.getfunction(label_t))
 
 
 

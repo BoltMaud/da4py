@@ -78,19 +78,19 @@ class Operator(Qbf_formula):
         if len(self.positiveVariables) == 0 and len(self.negativeVariabes)==0 and len(self.qbf_formulas)==1:
             return self.qbf_formulas[0].simplify()
         newQbflist = [qbf.simplify() for qbf in self.qbf_formulas]
-        if len(self.qbf_formulas) == 1 and self.qbf_formulas[0].type == "&&":
+        if len(self.qbf_formulas) == 1 and self.qbf_formulas[0].type == "AND":
             self.positiveVariables = self.qbf_formulas[0].positiveVariables + self.positiveVariables
             self.negativeVariabes = self.qbf_formulas[0].negativeVariables + self.negativeVariabes
-        if self.type=="&&":
+        if self.type=="AND":
             return And(self.positiveVariables, self.negativeVariabes, newQbflist).simplify()
-        if self.type=="||":
+        if self.type=="OR":
             return Or(self.positiveVariables, self.negativeVariabes, newQbflist).simplify()
 
     def negation(self):
         newQbflist = [qbf.negation() for qbf in self.qbf_formulas]
-        if self.type=="&&":
+        if self.type=="AND":
             return Or(self.negativeVariabes,self.positiveVariables,newQbflist)
-        if self.type=="||":
+        if self.type=="OR":
             return And(self.negativeVariabes,self.positiveVariables,newQbflist)
 
     @abstractmethod
@@ -101,9 +101,13 @@ class Operator(Qbf_formula):
     def clausesToCnf(self,nbVars):
         pass
 
+    def __repr__(self, variablesGenerator,time=0):
+        list_of_formulas=[ '\n' + q.__repr__(variablesGenerator, time+1) for q in self.qbf_formulas]
+        return "\t"*time + self.type + "("+ str(self.positiveVariables)+", "+str(self.negativeVariabes)+", "+ ''.join(list_of_formulas) +")"
+
 class And(Operator):
     def __init__(self, positiveVariables, negatieVariables, qbf_formulas):
-        self.type = "&&"
+        self.type = "AND"
         self.positiveVariables = positiveVariables
         self.negativeVariabes = negatieVariables
         self.qbf_formulas = qbf_formulas
@@ -115,16 +119,19 @@ class And(Operator):
         self.positiveVariables = []
         self.negativeVariabes = []
 
-    def clausesToCnf(self,nbVars):
+    def aux_clausesToCnf(self,nbVars):
         dnfPositiveVariables = [([v],[]) for v in self.positiveVariables]
         dnfNegativeVariables = [([],[v]) for v in self.negativeVariabes]
-        left = [ formula.clausesToCnf(nbVars) for formula in self.qbf_formulas]
-        return Cnf_formula(nbVars,dnfPositiveVariables + dnfNegativeVariables + left)
+        left = [ formula.aux_clausesToCnf(nbVars) for formula in self.qbf_formulas]
+        return (nbVars,dnfPositiveVariables + dnfNegativeVariables + left)
 
+    def clausesToCnf(self,nbVars):
+        n,clauses = self.aux_clausesToCnf(nbVars)
+        return Cnf_formula(n,clauses)
 
 class Or(Operator):
     def __init__(self, positiveVariables, negatieVariables, qbf_formulas):
-        self.type = "||"
+        self.type = "OR"
         self.positiveVariables = positiveVariables
         self.negativeVariabes = negatieVariables
         self.qbf_formulas = qbf_formulas
@@ -132,16 +139,19 @@ class Or(Operator):
     def distributeImplication(self,var):
         self.negativeVariabes.append(var)
 
-    def clausesToCnf(self,nbVars):
-        if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "||":
-            return Or(self.positiveVariables,self.negativeVariabes,self.qbf_formulas[0]).clausesToCnf(nbVars)
+    def aux_clausesToCnf(self,nbVars):
+        if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "OR":
+            return Or(self.positiveVariables,self.negativeVariabes,self.qbf_formulas[0]).aux_clausesToCnf(nbVars)
         else:
             dnf = (self.positiveVariables+ [i for i in range (nbVars+1, len(self.qbf_formulas))] , self.negativeVariabes)
             implications=[]
             for i in range (1,len(self.qbf_formulas)):
                 implications.append(self.qbf_formulas[i].distributeImplication(nbVars+1+i))
+            return (nbVars+len(self.qbf_formulas),And([],[],implications).aux_clausesToCnf(nbVars)[1].append(dnf))
 
-            return Cnf_formula(nbVars+len(self.qbf_formulas),And([],[],implications).clausesToCnf(nbVars).listOfClauses.append(dnf))
+    def clausesToCnf(self,nbVars):
+        n,clauses = self.aux_clausesToCnf(nbVars)
+        return Cnf_formula(n,clauses)
 
 class Pb_constraint :
     def __init__(self,type,weightedVariables,threshold):
