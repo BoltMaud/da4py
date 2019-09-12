@@ -102,8 +102,13 @@ class Operator(Qbf_formula):
         pass
 
     def __repr__(self, variablesGenerator,time=0):
-        list_of_formulas=[ '\n' + q.__repr__(variablesGenerator, time+1) for q in self.qbf_formulas]
-        return "\t"*time + self.type + "("+ str(self.positiveVariables)+", "+str(self.negativeVariabes)+", "+ ''.join(list_of_formulas) +")"
+        str_of_formulas=[ '\n' + q.__repr__(variablesGenerator, time+1) for q in self.qbf_formulas]
+        str_of_positivesVariables = [variablesGenerator.getVarName(n) for n in self.positiveVariables]
+        str_of_negativeVariabes = [variablesGenerator.getVarName(n) for n in self.negativeVariabes]
+        return "\t"*time + self.type + "( ["\
+               + ', '.join(str_of_positivesVariables) +"], ["\
+               + ', '.join(str_of_negativeVariabes)+"], "\
+               + ' '.join(str_of_formulas) +")"
 
 class And(Operator):
     def __init__(self, positiveVariables, negatieVariables, qbf_formulas):

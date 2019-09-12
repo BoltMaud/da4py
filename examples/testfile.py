@@ -15,8 +15,8 @@ net, m0, mf = importer.pnml.import_net("../examples/dev.pnml")
 #vizu.apply(net, m0,mf).view()
 variables=vg.VariablesGenerator()
 formulas = petri_net_to_SAT(net, m0,mf,variables,10)
-#print(formulas.__repr__(variables))
-variables.getVarName(2)
+print(formulas.__repr__(variables))
+
 cnf= formulas.clausesToCnf(variables.iterator)
 
 #[print(t) for t in cnf.listOfClauses]

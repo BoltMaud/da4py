@@ -4,7 +4,7 @@ from darksider4py.formulas import Or, And
 def is_run(size_of_run, places, transitions, m0, m_ip,tau_it):
     positives = [m_ip([0,places.index(m)]) for m in m0]
     negatives = [m_ip([0,places.index(m)]) for m in places if m not in m0]
-    formulas = [is_action(places, transitions, m0,i,m_ip,tau_it) for i in range(1,size_of_run)]
+    formulas = [is_action(places, transitions, m0,i,m_ip,tau_it) for i in range(1,size_of_run+1)]
     run_of_pn = And(positives,negatives,formulas)
     return  run_of_pn
 
@@ -60,10 +60,10 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     places=[p for p in net.places]
 
     # we create the number of variables needed for the markings
-    variablesGenerator.add(label_m, [(0,size_of_run),(0,len(places))])
+    variablesGenerator.add(label_m, [(0,size_of_run+1),(0,len(places))])
 
     # we create the number of variables needed for the transitions
-    variablesGenerator.add(label_t, [(0,size_of_run-1),(0,len(transitions))])
+    variablesGenerator.add(label_t, [(1,size_of_run+1),(0,len(transitions))])
     return is_run(size_of_run, places, transitions,m0,variablesGenerator.getfunction(label_m),variablesGenerator.getfunction(label_t))
 
 

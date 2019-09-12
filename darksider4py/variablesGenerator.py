@@ -70,7 +70,7 @@ class VariablesGenerator:
                     number=number%div
                 return key+" ["+ ', '.join(list_of_indexes)+", "+str(number)+"]"
 
-
+'''
 test=VariablesGenerator()
 
 test.add("m",[(0,4),(0,5),(0,8)])
@@ -84,7 +84,7 @@ for i in range(0,4):
                 print("m",[i,j,a])
                 print(test.getVarNumber("m",[i,j,a]))
 
-'''
+
 for i in range(0,3):
     for j in range(1, 5):
         for a in range(0, 9):
