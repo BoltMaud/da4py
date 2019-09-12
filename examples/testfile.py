@@ -1,3 +1,4 @@
+from darksider4py.formulas import Cnf_formula
 from darksider4py.pn_to_formulas import petri_net_to_SAT
 from darksider4py import variablesGenerator as vg
 
@@ -15,8 +16,7 @@ net, m0, mf = importer.pnml.import_net("../examples/dev.pnml")
 #vizu.apply(net, m0,mf).view()
 variables=vg.VariablesGenerator()
 formulas = petri_net_to_SAT(net, m0,mf,variables,10)
-print(formulas.__repr__(variables))
-
-cnf= formulas.clausesToCnf(variables.iterator)
-
-#[print(t) for t in cnf.listOfClauses]
+#print(formulas.__repr__(variables))
+nbVars=variables.iterator
+cnf= Cnf_formula(formulas.clausesToCnf(nbVars))
+[print(t) for t in cnf.listOfClauses]
