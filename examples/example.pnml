@@ -2,12 +2,12 @@
 <pnml>
      <net id="" type="http://www.pnml.org/version-2009/grammar/ptnet">
           <name>
-               <text>Project_PetriNet_Syntehsis1430748661856.pnml</text>
+               <text>Dev.pnml</text>
           </name>
           <page id="p1-1430748661881">
                <transition id="Node1430748661856716.4453427809592">
                     <name>
-                         <text>a</text>
+                         <text>A</text>
                          <graphics>
                               <offset x="0" y="0"/>
                          </graphics>
@@ -18,7 +18,7 @@
                </transition>
                <transition id="Node14307486618564463.2833234168675">
                     <name>
-                         <text>x</text>
+                         <text>B</text>
                          <graphics>
                               <offset x="0" y="0"/>
                          </graphics>
@@ -29,7 +29,7 @@
                </transition>
                <transition id="Node1430748661856275.8564070512748">
                     <name>
-                         <text>b</text>
+                         <text>C</text>
                          <graphics>
                               <offset x="0" y="0"/>
                          </graphics>
@@ -40,7 +40,7 @@
                </transition>
                <transition id="Node14307486618561400.9495859361032">
                     <name>
-                         <text>y</text>
+                         <text>D</text>
                          <graphics>
                               <offset x="0" y="0"/>
                          </graphics>

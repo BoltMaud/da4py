@@ -136,11 +136,12 @@ class Or(Operator):
         if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "||":
             return Or(self.positiveVariables,self.negativeVariabes,self.qbf_formulas[0]).clausesToCnf(nbVars)
         else:
-            dnf = (self.positiveVariables+ [i for i in range (nbVars+1, len(self.qbf_fomulas))] , self.negativeVariabes)
+            dnf = (self.positiveVariables+ [i for i in range (nbVars+1, len(self.qbf_formulas))] , self.negativeVariabes)
             implications=[]
-            for i in range (1,len(self.qbf_formulas)+1):
+            for i in range (1,len(self.qbf_formulas)):
                 implications.append(self.qbf_formulas[i].distributeImplication(nbVars+1+i))
-            return Cnf_formula(nbVars+len(self.qbf_formulas),And([],[],implications).clausesToCnf(nbVars).append(dnf))
+
+            return Cnf_formula(nbVars+len(self.qbf_formulas),And([],[],implications).clausesToCnf(nbVars).listOfClauses.append(dnf))
 
 class Pb_constraint :
     def __init__(self,type,weightedVariables,threshold):

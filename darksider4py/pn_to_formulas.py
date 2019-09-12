@@ -1,11 +1,4 @@
 from darksider4py.formulas import Or, And
-import sys
-
-from darksider4py import variablesGenerator as vg
-
-sys.path.append('../pm4py-source')
-from pm4py.objects.petri import importer
-from pm4py.objects.petri.common import final_marking, initial_marking
 
 
 def is_run(size_of_run, places, transitions, m0, m_ip,tau_it):
@@ -28,7 +21,7 @@ def is_action(places, transitions, m0, i, m_ip, tau_it):
     formulas= [Or([tau_it([i,transitions.index(t)]) for t in transitions],[],[])]
     # if transition t fires at instant i, then we have the good marking
     for t in transitions:
-        formulas.append(Or([],[tau_it([i,transitions.index(t)])],is_transition(places,t,i,m_ip)))
+        formulas.append(Or([],[tau_it([i,transitions.index(t)])],[is_transition(places,t,i,m_ip)]))
     return And([],[],formulas)
 
 def is_transition(places,transition,i,m_ip):
@@ -46,7 +39,7 @@ def is_transition(places,transition,i,m_ip):
         else :
             formulas.append(Or([],[],[And([m_ip([i,places.index(p)]),m_ip([i-1,places.index(p)])],[],[]),
                                       And([],[m_ip([i,places.index(p)]),m_ip([i-1,places.index(p)])],[])]))
-    And([],[],formulas)
+    return And([],[],formulas)
 
 def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip", label_t="tau_it"):
     '''
@@ -73,9 +66,6 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     return is_run(size_of_run, places, transitions,m0,variablesGenerator.get(label_m),variablesGenerator.get(label_t))
 
 
-net, m0, mf = importer.pnml.import_net("../examples/example.pnml")
-variables=vg.variablesGenerator()
-petri_net_to_SAT(net, m0,mf,variables,10)
 
 
 
