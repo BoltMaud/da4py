@@ -140,7 +140,7 @@ class And(Operator):
         for v in self.positiveVariables:
             dnfPositiveVariables.append(([v],[]))
         for v in self.negativeVariables:
-            dnfNegativeVariables.append(([v],[]))
+            dnfNegativeVariables.append(([],[v]))
         left = []
         for formula in self.qbf_formulas:
             cnf=formula.aux_clausesToCnf()
