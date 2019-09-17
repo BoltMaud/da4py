@@ -16,7 +16,17 @@ net, m0, mf = importer.pnml.import_net("../examples/dev.pnml")
 #vizu.apply(net, m0,mf).view()
 variables=vg.VariablesGenerator()
 formulas = petri_net_to_SAT(net, m0,mf,variables,10)
-#print(formulas.__repr__(variables))
+#print(formulas)
 nbVars=variables.iterator
 cnf= Cnf_formula(formulas.clausesToCnf(nbVars))
-[print(t) for t in cnf.listOfClauses]
+
+
+from pysat.solvers import Glucose3
+g = Glucose3()
+for (a,b) in cnf.listOfClauses :
+    list = a+[-1*b1 for b1 in b]
+    print(list)
+    g.add_clause(list)
+print(g.solve())
+
+

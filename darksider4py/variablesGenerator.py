@@ -15,7 +15,7 @@ class VariablesGenerator:
 
     def __init__(self):
         self.set={}
-        self.iterator=0
+        self.iterator=1
 
     def add(self, name, listOfCouples):
         '''
