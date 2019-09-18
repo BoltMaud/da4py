@@ -59,6 +59,7 @@ class VariablesGenerator:
         return self.set[name].function
 
     def getVarName(self,number):
+        number-=1
         for key in self.set :
             if number >= self.set[key].min and number < self.set[key].max:
                 list_of_indexes=[]

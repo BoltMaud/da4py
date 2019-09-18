@@ -1,13 +1,9 @@
-from darksider4py.formulas import Or, And
+from darksider4py.main.formulas import Or, And
 
 
 def is_run(size_of_run, places, transitions, m0, m_ip,tau_it):
-    print("initial",m0)
-    [print(places.index(m)) for m in m0]
     positives = [m_ip([0,places.index(m)]) for m in m0]
-    print("positives",positives)
     negatives = [m_ip([0,places.index(m)]) for m in places if m not in m0]
-    print("s",size_of_run)
     formulas = [is_action(places, transitions, m0,i,m_ip,tau_it) for i in range(1,size_of_run+1)]
     run_of_pn = And(positives,negatives,formulas)
     return  run_of_pn
@@ -70,7 +66,7 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     variablesGenerator.add(label_t, [(1,size_of_run+1),(0,len(transitions))])
     print(places)
     print(transitions)
-    return is_run(size_of_run, places, transitions,m0,variablesGenerator.getfunction(label_m),variablesGenerator.getfunction(label_t))
+    return (is_run(size_of_run, places, transitions,m0,variablesGenerator.getfunction(label_m),variablesGenerator.getfunction(label_t)))
 
 
 
