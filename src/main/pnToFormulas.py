@@ -1,5 +1,4 @@
-from darksider4py.main.formulas import Or, And
-
+from src.main.formulas import Or, And
 
 def is_run(size_of_run, places, transitions, m0, m_ip,tau_it):
     positives = [m_ip([0,places.index(m)]) for m in m0]

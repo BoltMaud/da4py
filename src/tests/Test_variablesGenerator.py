@@ -1,4 +1,4 @@
-import darksider4py.main.variablesGenerator as vg
+import darksider4py.main.utils.variablesGenerator as vg
 
 def test_add_1_variable():
     test=vg.VariablesGenerator()

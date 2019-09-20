@@ -1,5 +1,5 @@
-from darksider4py.main.pn_to_formulas import petri_net_to_SAT
-from darksider4py.main import variablesGenerator as vg
+from src.main.pnToFormulas import petri_net_to_SAT
+from src.main import variablesGenerator as vg
 
 # last version is not updated for importer, mine is
 import sys
@@ -15,7 +15,7 @@ net, m0, mf = importer.pnml.import_net("/Users/mboltenhagen/Documents/PhD/Josep&
 #vizu.apply(net, m0,mf).view()
 
 
-from pysat.solvers import Glucose3
+import pysat.solvers as SATSolvers
 
 variables=vg.VariablesGenerator()
 start=timeit.default_timer()
@@ -24,9 +24,13 @@ nbVars=variables.iterator
 cnf= formulas.clausesToCnf(nbVars)
 simple=timeit.default_timer()
 print("without simplification :",simple-start)
-g = Glucose3()
-g.append_formula(cnf)
-print(g.solve())
-stop = timeit.default_timer()
-print("solve",stop-simple)
-print("total",stop-start)
+
+
+for name in ['cd','g3','g4','lgl','mcm','mcb','mpl','mc','m22','mgh']:
+    debut=timeit.default_timer()
+    solver = SATSolvers.Solver(name=name)
+    solver.append_formula(cnf)
+    print("\n",solver.solve())
+    fin = timeit.default_timer()
+    print(name,fin-debut)
+
