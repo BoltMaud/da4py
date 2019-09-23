@@ -5,6 +5,7 @@ from src.main.formulas import And
 
 def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_transition, label_l="lambda_jia"):
     traces = project_traces(traces_xes)
+    print("IL Y A ",len(traces),"TRACES")
     variablesGenerator.add(label_l,[(0,len(traces)),(1,size_of_run+1),(0,len(transitions))])
     lambda_jia=variablesGenerator.getfunction(label_l)
     positives=[]

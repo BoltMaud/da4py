@@ -51,52 +51,49 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
     full_formulas = And([],[],formulas)
 
     cnf= full_formulas.clausesToCnf(nbVars)
+
     wcnf= WCNF()
     wcnf.extend(cnf)
-
     for j in range (0,len(traces)):
         for d in range (1,(max_d)+1):
-            wcnf.append([variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])],-10)
+            print(variables.getVarName(variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])))
+            wcnf.append([variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])],weight=-10)
+    from pysat.examples.rc2 import RC2
+    with RC2(wcnf) as rc2:
+        for model in rc2.enumerate():
 
-    from pysat.examples.lsu import LSU
-    solver = LSU(wcnf, verbose=0)
-
-
-
-    print(solver.solve())
-    model = solver.get_model()
-    print(solver.get_model())
-
-    run="<"
-    word="<<"
-    for var in model:
-        if var > 0 and variables.getVarName(var)!=None:
-            if variables.getVarName(var).startswith("tau"):
-                index= variables.getVarName(var).split("]")[0].split(",")[1]
-                i= variables.getVarName(var).split("[")[1].split(",")[0]
-                run+=" ("+i+", "+str(transitions[int(index)])+"),"
-        if var > 0 and variables.getVarName(var)!=None:
-            if variables.getVarName(var).startswith("lambda"):
-                index= variables.getVarName(var).split("]")[0].split(",")[2]
-                i= variables.getVarName(var).split("[")[1].split(",")[1]
-                word+=" ("+i+", "+str(transitions[int(index)])+"),"
-    run+=">"
-    word+=">>"
-    print("RUN",run)
-    print("WORD",word)
-    for var in model :
-        '''if var < 0:
+            if(rc2.cost < 0):
+                print(rc2.cost)
+                for d in range (1,max_d+1):
+                    if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]) in model:
+                        print("D =",d)
+                run="<"
+                word="<<"
+                for var in model:
+                    if var > 0 and variables.getVarName(var)!=None:
+                        if variables.getVarName(var).startswith("tau"):
+                            index= variables.getVarName(var).split("]")[0].split(",")[1]
+                            i= variables.getVarName(var).split("[")[1].split(",")[0]
+                            run+=" ("+i+", "+str(transitions[int(index)])+"),"
+                    if var > 0 and variables.getVarName(var)!=None:
+                        if variables.getVarName(var).startswith("lambda"):
+                            index= variables.getVarName(var).split("]")[0].split(",")[2]
+                            i= variables.getVarName(var).split("[")[1].split(",")[1]
+                            word+=" ("+i+", "+str(transitions[int(index)])+"),"
+                run+=">"
+                word+=">>"
+                print("RUN",run)
+                print("WORD",word)
+    '''for var in model :
+        if var < 0:
             var*=-1
             if variables.getVarName(var)!=None and variables.getVarName(var).startswith("djiid"):
                 print("-",variables.getVarName(var))
-        else :'''
+        else :
         if variables.getVarName(var)!=None and variables.getVarName(var).startswith("djiid"):
-            print("+",variables.getVarName(var))
+            print("+",variables.getVarName(var))'''
 
-    for d in range (0,max_d+1):
-        print(d)
-        if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]) in model:
-            print(d)
+
     return None
 
 

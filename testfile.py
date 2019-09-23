@@ -11,6 +11,7 @@ sys.path.append('../pm4py-source')
 from pm4py.objects.petri import importer
 from pm4py.objects.log.importer.xes import factory as xes_importer
 from pm4py.objects.conversion.log import factory as log_conv_fact
+from pm4py.visualization.petrinet import factory as vizu
 
 
 import timeit
@@ -44,8 +45,11 @@ for name in ['cd','g3','g4','lgl','mcm','mcb','mpl','mc','m22','mgh']:
 '''
 variables=vg.VariablesGenerator()
 
+#net, m0, mf = importer.pnml.import_net("/Users/mboltenhagen/Documents/PhD/Josep&Thomas/model-loops/M1_petri_pnml.pnml")
+#log = xes_importer.import_log("../examples/M1.xes")
+
 net, m0, mf = importer.pnml.import_net("../examples/AouC.pnml")
 log = xes_importer.import_log("../examples/A.xes")
 
-
-generalAlignmentEditDistance(net,m0,mf,log,3,max_d=3)
+#vizu.apply(net,m0,mf).view()
+generalAlignmentEditDistance(net,m0,mf,log,2,max_d=2)
