@@ -54,9 +54,15 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
     wcnf= WCNF()
     wcnf.extend(cnf)
 
+    for j in range (0,len(traces)):
+        for d in range (1,(max_d)+1):
+            wcnf.append([variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])],-10)
 
-    solver=SATSolvers.Solver(name='g4')
-    solver.append_formula(cnf)
+    from pysat.examples.lsu import LSU
+    solver = LSU(wcnf, verbose=0)
+
+
+
     print(solver.solve())
     model = solver.get_model()
     print(solver.get_model())

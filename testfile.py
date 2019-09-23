@@ -44,7 +44,7 @@ for name in ['cd','g3','g4','lgl','mcm','mcb','mpl','mc','m22','mgh']:
 '''
 variables=vg.VariablesGenerator()
 
-net, m0, mf = importer.pnml.import_net("../examples/A-B.pnml")
+net, m0, mf = importer.pnml.import_net("../examples/AouC.pnml")
 log = xes_importer.import_log("../examples/A.xes")
 
 

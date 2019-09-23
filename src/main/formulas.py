@@ -1,5 +1,6 @@
 
 from abc import ABCMeta, abstractmethod
+from pysat.formula import WCNF
 
 NB_VARS=0
 
@@ -87,8 +88,10 @@ class Operator(Qbf_formula):
         if variablesGenerator ==None:
             return self.type + str(self.positiveVariables) + str(self.negativeVariables) + str(self.qbf_formulas)
         str_of_formulas=[ '\n' + q.__repr__(variablesGenerator, time+1) for q in self.qbf_formulas]
-        str_of_positivesVariables = [variablesGenerator.getVarName(n) if variablesGenerator.getVarName(n) is not None else n for n in self.positiveVariables]
-        str_of_negativeVariables = [variablesGenerator.getVarName(n) if variablesGenerator.getVarName(n) is not None else n for n in self.negativeVariables]
+        str_of_positivesVariables = [variablesGenerator.getVarName(n)
+                                     if variablesGenerator.getVarName(n) is not None else n for n in self.positiveVariables]
+        str_of_negativeVariables = [variablesGenerator.getVarName(n)
+                                    if variablesGenerator.getVarName(n) is not None else n for n in self.negativeVariables]
         return "\t"*time + self.type + "( ["\
                + ', '.join(str_of_positivesVariables) +"], ["\
                + ', '.join(str_of_negativeVariables)+"], "\
