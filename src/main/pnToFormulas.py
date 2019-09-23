@@ -65,7 +65,7 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     variablesGenerator.add(label_t, [(1,size_of_run+1),(0,len(transitions))])
     print(places)
     print(transitions)
-    return (is_run(size_of_run, places, transitions,m0,variablesGenerator.getfunction(label_m),variablesGenerator.getfunction(label_t)))
+    return (is_run(size_of_run, places, transitions,m0,variablesGenerator.getfunction(label_m),variablesGenerator.getfunction(label_t)),places,transitions)
 
 
 

@@ -59,15 +59,16 @@ class VariablesGenerator:
         return self.set[name].function
 
     def getVarName(self,number):
-        number-=1
+        number-=0
         for key in self.set :
             if number >= self.set[key].min and number < self.set[key].max:
+                number-=self.set[key].min
                 list_of_indexes=[]
                 for i in range (0,len(self.set[key].setOfBoundaries)-1):
                     div=1
                     for j in range (i+1,len(self.set[key].setOfBoundaries)):
-                        div*=self.set[key].setOfBoundaries[j][1]-self.set[key].setOfBoundaries[j][0]
-                    list_of_indexes.append(str(number//div))
+                        div*=(self.set[key].setOfBoundaries[j][1]-self.set[key].setOfBoundaries[j][0])
+                    list_of_indexes.append(str(number//div+self.set[key].setOfBoundaries[i][0]))
                     number=number%div
                 return key+" ["+ ', '.join(list_of_indexes)+", "+str(number)+"]"
 
@@ -75,23 +76,18 @@ class VariablesGenerator:
 test=VariablesGenerator()
 
 test.add("m",[(0,4),(0,5),(0,8)])
-test.add("l",[(0,3),(1,5),(0,9)])
-test.add("x",[(1,5)])
+print(test.iterator)
+test.add("x",[(0,2),(3,12),(0,6)])
 
 for i in range(0,4):
     for j in range(0, 5):
         for a in range(0, 8):
-            if test.getVarNumber("m",[i,j,a]) == 58 :
-                print("m",[i,j,a])
-                print(test.getVarNumber("m",[i,j,a]))
+            print(i,j,a,test.getVarNumber("m",[i,j,a]),test.getVarName(test.getVarNumber("m",[i,j,a])))
 
 
-for i in range(0,3):
-    for j in range(1, 5):
-        for a in range(0, 9):
-            print(test.getVarNumber("l",[i,j,a]))
-
-for l in range (1,5):
-    print (test.getVarNumber("x",[l]))
-print(test.iterator)
+for i in range(0,2):
+    for j in range(3, 12):
+        for a in range(0,6):
+            print(i,j,a,test.getVarNumber("x",[i,j,a]),test.getVarName(test.getVarNumber("x",[i,j,a])))
 '''
+

@@ -1,20 +1,27 @@
+from src.main.alignmentEditDistance import generalAlignmentEditDistance
 from src.main.pnToFormulas import petri_net_to_SAT
+from src.main.logToFormulas import log_to_SAT
+
 from src.main import variablesGenerator as vg
 
 # last version is not updated for importer, mine is
 import sys
+import os
 sys.path.append('../pm4py-source')
 from pm4py.objects.petri import importer
+from pm4py.objects.log.importer.xes import factory as xes_importer
+from pm4py.objects.conversion.log import factory as log_conv_fact
+
+
 import timeit
 
 ##################################################################
 ### this is my developpement file
 ##################################################################
 
-net, m0, mf = importer.pnml.import_net("/Users/mboltenhagen/Documents/PhD/Josep&Thomas/model-loops/M1_petri_pnml.pnml")
 #vizu.apply(net, m0,mf).view()
 
-
+'''
 import pysat.solvers as SATSolvers
 
 variables=vg.VariablesGenerator()
@@ -34,3 +41,11 @@ for name in ['cd','g3','g4','lgl','mcm','mcb','mpl','mc','m22','mgh']:
     fin = timeit.default_timer()
     print(name,fin-debut)
 
+'''
+variables=vg.VariablesGenerator()
+
+net, m0, mf = importer.pnml.import_net("../examples/A-B.pnml")
+log = xes_importer.import_log("../examples/A.xes")
+
+
+generalAlignmentEditDistance(net,m0,mf,log,3,max_d=3)
