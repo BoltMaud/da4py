@@ -20,7 +20,7 @@ class MinSATOverRC2:
         cost=None
         optimalModel=None
         for model in self.factory.enumerate():
-            print()
+            print("whut")
             if self.factory.cost!= 0:
                 print(self.factory.cost)
             if cost==None or self.factory.cost>cost:

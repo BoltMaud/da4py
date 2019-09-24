@@ -8,6 +8,8 @@ from src.main.logToFormulas import log_to_SAT
 from src.main.pnToFormulas import petri_net_to_SAT
 import pysat.solvers as SATSolvers
 from pysat.examples.rc2 import RC2
+from pysat.examples.fm import FM
+
 from pysat.formula import WCNF
 
 
@@ -39,6 +41,7 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
 
     formulas = [pn_formulas,log_formulas]
     for j in range (0, len(traces)):
+        print("oui")
         formulas.append(initialisation(transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                                        variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                                        variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,
@@ -54,36 +57,47 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
 
     wcnf= WCNF()
     wcnf.extend(cnf)
+    print(wcnf)
+
     for j in range (0,len(traces)):
         for d in range (1,(max_d)+1):
+            print(variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d]))
+            wcnf.append([-1*variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])])
+            wcnf.append([variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])],weight=10)
             print(variables.getVarName(variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])))
-            wcnf.append([variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])],weight=-10)
-    from pysat.examples.rc2 import RC2
-    with RC2(wcnf) as rc2:
-        for model in rc2.enumerate():
 
-            if(rc2.cost < 0):
-                print(rc2.cost)
-                for d in range (1,max_d+1):
-                    if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]) in model:
-                        print("D =",d)
-                run="<"
-                word="<<"
-                for var in model:
-                    if var > 0 and variables.getVarName(var)!=None:
-                        if variables.getVarName(var).startswith("tau"):
-                            index= variables.getVarName(var).split("]")[0].split(",")[1]
-                            i= variables.getVarName(var).split("[")[1].split(",")[0]
-                            run+=" ("+i+", "+str(transitions[int(index)])+"),"
-                    if var > 0 and variables.getVarName(var)!=None:
-                        if variables.getVarName(var).startswith("lambda"):
-                            index= variables.getVarName(var).split("]")[0].split(",")[2]
-                            i= variables.getVarName(var).split("[")[1].split(",")[1]
-                            word+=" ("+i+", "+str(transitions[int(index)])+"),"
-                run+=">"
-                word+=">>"
-                print("RUN",run)
-                print("WORD",word)
+    model=None
+    print(wcnf.soft)
+    ###############################
+    with RC2(wcnf) as rc2:
+        for m in rc2.enumerate():
+            print(rc2)
+            print("cout",rc2.cost)
+            print(rc2.wght)
+            print(rc2.model)
+            model=m
+            for d in range (1,max_d+1):
+                print(variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]))
+                if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]) in model:
+                    print("D =",d)
+            run="<"
+            word="<<"
+            for var in model:
+                if var > 0 and variables.getVarName(var)!=None:
+                    if variables.getVarName(var).startswith("tau"):
+                        index= variables.getVarName(var).split("]")[0].split(",")[1]
+                        i= variables.getVarName(var).split("[")[1].split(",")[0]
+                        run+=" ("+i+", "+str(transitions[int(index)])+"),"
+                if var > 0 and variables.getVarName(var)!=None:
+                    if variables.getVarName(var).startswith("lambda"):
+                        index= variables.getVarName(var).split("]")[0].split(",")[2]
+                        i= variables.getVarName(var).split("[")[1].split(",")[1]
+                        word+=" ("+i+", "+str(transitions[int(index)])+"),"
+            run+=">"
+            word+=">>"
+            print("RUN",run)
+            print("WORD",word)
+
     '''for var in model :
         if var < 0:
             var*=-1
