@@ -40,7 +40,7 @@ def is_transition(places,transition,i,m_ip):
                                       And([],[m_ip([i,places.index(p)]),m_ip([i-1,places.index(p)])],[])]))
     return And([],[],formulas)
 
-def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip", label_t="tau_it"):
+def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip", label_t="tau_it",silent_transition="tau"):
     '''
     This function returns the SAT formulas of a petrinet given label of variables, size_of_run
     :param net: petri net of the librairie pm4py
