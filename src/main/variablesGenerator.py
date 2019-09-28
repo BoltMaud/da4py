@@ -58,6 +58,12 @@ class VariablesGenerator:
     def getfunction(self, name):
         return self.set[name].function
 
+    def getMin(self, name):
+        return self.set[name].min
+
+    def getMax(self, name):
+        return self.set[name].max
+
     def getVarName(self,number):
         number-=0
         for key in self.set :

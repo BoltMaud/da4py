@@ -48,8 +48,8 @@ variables=vg.VariablesGenerator()
 #net, m0, mf = importer.pnml.import_net("/Users/mboltenhagen/Documents/PhD/Josep&Thomas/model-loops/M8_petri_pnml.pnml")
 #log = xes_importer.import_log("./examples/M8.xes")
 
-net, m0, mf = importer.pnml.import_net("./examples/AouC.pnml")
+net, m0, mf = importer.pnml.import_net("./examples/A.pnml")
 log = xes_importer.import_log("./examples/A.xes")
 
 #vizu.apply(net,m0,mf).view()
-generalAlignmentEditDistance(net,m0,mf,log,2,max_d=2)
+generalAlignmentEditDistance(net,m0,mf,log,3,max_d=2)

@@ -10,6 +10,7 @@ import pysat.solvers as SATSolvers
 from pysat.examples.rc2 import RC2
 from pysat.examples.fm import FM
 from pysat.solvers import Solver
+from pm4py.visualization.petrinet import factory as vizu
 
 from pysat.formula import WCNF
 
@@ -35,80 +36,83 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
     max_d+=1
     variables=vg.VariablesGenerator()
     net,wait_transition = add_wait_net(net)
+
     pn_formulas, places, transitions = petri_net_to_SAT(net, m0,mf,variables,size_of_run,label_m=BOOLEAN_VAR_MARKING_PN,label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN)
     log_formulas,traces = log_to_SAT(traces,transitions,variables,size_of_run,wait_transition)
     variables.add(BOOLEAN_VAR_EDIT_DISTANCE,[(0, len(traces)),(0,size_of_run+1),(0,size_of_run+1),(0,max_d+1)])
 
     formulas = [pn_formulas,log_formulas]
     for j in range (0, len(traces)):
-        print("oui")
         init= initialisation(transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                              variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                              variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,
                              size_of_run,wait_transition,max_d=max_d)
-        print(init.__repr__(variables))
         formulas.append(init)
-        rec=recursionEditDistance(transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+        #print(init.__repr__(variables))
+        rec=recursionEditDistance(variables,transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                               variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                               variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,size_of_run,wait_transition,max_d=max_d)
-        #print(And([],[],rec).__repr__(variables))
         formulas+=(rec)
+        #print(And([],[],rec).__repr__(variables))
 
     nbVars=variables.iterator
     full_formulas = And([],[],formulas)
 
+
+
     cnf= full_formulas.clausesToCnf(nbVars)
+
 
     wcnf= WCNF()
     wcnf.extend(cnf)
-    print(wcnf)
 
-    for j in range (0,len(traces)):
-        for d in range (1,(max_d)+1):
-            print(variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d]))
-            #wcnf.append([variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])],weight=10)
-            print(variables.getVarName(variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,size_of_run,size_of_run,d])))
-
-    model=None
-    print(wcnf.soft)
     ###############################
 
-    for c in cnf:
-        if 54 in c:
-            print(c)
-
-    solver = Solver(name='g4')
+    solver = Solver(name='g4',with_proof=True)
     solver.append_formula(cnf)
-    model=solver.solve()
+    solver.add_clause([-1*variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,2,1,1])])
+    bool=solver.solve()
+    #if not bool:
+    #    print("PROOF")
+    #    for var in solver.get_proof():
+    #        print(var)
     model=solver.get_model()
+
     for d in range (1,max_d+1):
-        print(variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]))
-        if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]) in model:
+        if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run-1,size_of_run-1,d]) in model:
             print("D =",d)
 
 
-        for i in range (0, size_of_run+1):
-            for j in range (0, size_of_run+1):
-                for d in range (0,max_d+1):
-                    if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,i,j,d]) in model:
-                        print(i,j,d)
-        run="<"
-        word="<<"
-        for var in model:
-            if var > 0 and variables.getVarName(var)!=None:
-                if variables.getVarName(var).startswith("tau"):
-                    index= variables.getVarName(var).split("]")[0].split(",")[1]
-                    i= variables.getVarName(var).split("[")[1].split(",")[0]
-                    run+=" ("+i+", "+str(transitions[int(index)])+"),"
-            if var > 0 and variables.getVarName(var)!=None:
-                if variables.getVarName(var).startswith("lambda"):
-                    index= variables.getVarName(var).split("]")[0].split(",")[2]
-                    i= variables.getVarName(var).split("[")[1].split(",")[1]
-                    word+=" ("+i+", "+str(transitions[int(index)])+"),"
-        run+=">"
-        word+=">>"
-        print("RUN",run)
-        print("WORD",word)
+    for d in range (0,max_d+1):
+        if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]) in model:
+            print("djiid true",size_of_run+1,size_of_run+1,d)
+
+    run="<"
+    word="<<"
+
+    if variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN,[1,0]) in model:
+        print("dedant")
+    if variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[0,1,0]) in model:
+        print("dedannnt")
+    for var in model:
+        if var > 0 and variables.getVarName(var)!=None:
+            if variables.getVarName(var).startswith("djiid"):
+                print("wala",variables.getVarName(var))
+            if variables.getVarName(var).startswith("tau"):
+                index= variables.getVarName(var).split("]")[0].split(",")[1]
+                i= variables.getVarName(var).split("[")[1].split(",")[0]
+                run+=" ("+i+", "+str(transitions[int(index)])+"),"
+        if var > 0 and variables.getVarName(var)!=None:
+            if variables.getVarName(var).startswith("lambda"):
+                print("eee",variables.getVarName(var))
+
+                index= variables.getVarName(var).split("]")[0].split(",")[2]
+                i= variables.getVarName(var).split("[")[1].split(",")[1]
+                word+=" ("+i+", "+str(transitions[int(index)])+"),"
+    run+=">"
+    word+=">>"
+    print("RUN",run)
+    print("WORD",word)
 
     '''for var in model :
     if var < 0:
@@ -123,17 +127,17 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
     return None
 
 
-def recursionEditDistance(transitions, tau_it, lambda_jia, djiid,j, size_of_run,wait_transition,silent_transition="tau", max_d=10):
+def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid,j, size_of_run,wait_transition,silent_transition="tau", max_d=10):
     formulas=[]
-    print(size_of_run)
-    for i_m in range (0, size_of_run):
-        for i_t in range (0, size_of_run):
-            for d in range (0, max_d):
+    for i_m in range (0, size_of_run-1):
+        for i_t in range (0, size_of_run-1):
+            for d in range (0, max_d-1):
                 # letters are equals or i_m == "tau" : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
+
                 condition=[tau_it([i_m+1,transitions.index(silent_transition)])] if silent_transition in transitions else []
-                letters_are_equals=Or([],condition,[
-                                    And([],[],
-                                        [Or([],[tau_it([i_m+1,t]),lambda_jia([j,i_t+1,t])],[]) for t in (0,len(transitions))]
+                letters_are_equals=Or([],[],[
+                                    And([],condition,
+                                        [Or([],[tau_it([i_m+1,t]),lambda_jia([j,i_t+1,t])],[]) for t in range (0,len(transitions)) ]
                                         ),
                                     Or([],[],[And([djiid([j,i_m,i_t,d]),djiid([j,i_m+1,i_t+1,d])],[],[]),
                                     And([],[djiid([j,i_m,i_t,d]),djiid([j,i_m+1,i_t+1,d])],[])])
@@ -147,7 +151,7 @@ def recursionEditDistance(transitions, tau_it, lambda_jia, djiid,j, size_of_run,
                     condition.append(tau_it([i_m+1,transitions.index(silent_transition)]))
                 letters_are_diff = Or([],[],[Or(condition,
                                       [],
-                                      [And([tau_it([i_m+1,t]),lambda_jia([j,i_t+1,t])],[],[]) for t in range (0,len(transitions))]),
+                                      [And([tau_it([i_m+1,t]),lambda_jia([j,i_t+1,t])],[],[])  for t in range (0,len(transitions)) ]),
                                        Or([],[],[
                                           And([],[djiid([j,i_m+1,i_t+1,d+1 ])],[Or([],[djiid([j,i_m+1,i_t,d]),djiid([j,i_m,i_t+1,d])],[])]),
                                           And([djiid([j,i_m+1,i_t+1,d+1 ]),djiid([j,i_m+1,i_t,d]),djiid([j,i_m,i_t+1,d])],[],[])
@@ -161,11 +165,13 @@ def recursionEditDistance(transitions, tau_it, lambda_jia, djiid,j, size_of_run,
                 ])
                 formulas.append(finish_run_of_model)
 
+
                 # ( u_m == w and u_t <> w) => ( d i_m i_t d <=> d i_m i_t+1 d
                 finish_run_of_trace = Or([lambda_jia([j,i_t+1,transitions.index(wait_transition)])],[tau_it([i_m+1,transitions.index(wait_transition)])],[
                     Or([],[],[And([djiid([j,i_m+1,i_t+1,d]),djiid([j,i_m,i_t+1,d])],[],[]),
                     And([],[djiid([j,i_m+1,i_t+1,d]),djiid([j,i_m,i_t+1,d])],[])])
                 ])
+
                 formulas.append(finish_run_of_trace)
 
     return formulas
@@ -175,48 +181,52 @@ def initialisation(transitions, tau_it, lambda_jia, djiid,j, size_of_run, wait_t
 
     positives=[]
     # diid is true for d = 0
-    for i_m in range (0,size_of_run+1):
-        for i_t in range (0,size_of_run+1):
+    for i_m in range (0,size_of_run):
+        for i_t in range (0,size_of_run):
             positives.append(djiid([j,i_m,i_t,0]))
 
     # diid is false for 1 1 d and d >0
-    negatives =[djiid([j,0,0, d]) for d in range (1,max_d+1)]
+    negatives =[djiid([j,0,0, d]) for d in range (1,max_d)]
 
     formulas =[]
-    for d in range (0, max_d):
-        for i_m in range (1, size_of_run):
+    for d in range (0, max_d-1):
+        for i_m in range (0, size_of_run-1):
             # (i_m <> w and i_m <> tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             condition=[tau_it([i_m+1, transitions.index(wait_transition)])]
             if silent_transition in transitions:
                 condition.append(tau_it([i_m+1,transitions.index(silent_transition)]))
-            i_t_null_and_i_m_cost = Or(condition,
-                                        [],
-                                        [
-                                            And([djiid([j,i_m+1,0,d+1]),djiid([j,i_m,0,d])],[],[]),
-                                            And([],[djiid([j,i_m+1,0,d+1]),djiid([j,i_m,0,d])],[])
+            i_t_null_and_i_m_cost = Or([],[],[
+                                        Or(condition,[],[]),
+                                        Or([],[],[
+                                                And([djiid([j,i_m+1,0,d+1]),djiid([j,i_m,0,d])],[],[]),
+                                                And([],[djiid([j,i_m+1,0,d+1]),djiid([j,i_m,0,d])],[])
+                                            ])
                                         ])
             formulas.append(i_t_null_and_i_m_cost)
 
             # (i_m == w or i_m == tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             i_t_null_and_i_m_dont_cost = Or([],[],[
                                                 And([],condition,[]),
-                                                And([djiid([j,i_m+1,0,d]),djiid([j,i_m,0,d])],[],[]),
-                                                And([],[djiid([j,i_m+1,0,d]),djiid([j,i_m,0,d])],[])
-
+                                                Or([],[],[
+                                                     And([djiid([j,i_m+1,0,d]),djiid([j,i_m,0,d])],[],[]),
+                                                     And([],[djiid([j,i_m+1,0,d]),djiid([j,i_m,0,d])],[])
+                                                ])
                                             ])
             formulas.append(i_t_null_and_i_m_dont_cost)
-        for i_t in range (1,size_of_run):
+        for i_t in range (0,size_of_run-1):
             # i_t <> w <=> (d 0 it+1 d+1 <=> d 0 it d )
             i_m_null_and_i_t_cost = Or([lambda_jia([j,i_t+1,transitions.index(wait_transition)])],[],[
+                                        Or([],[],[
                                         And([djiid([j,0,i_t,d]),djiid([j,0,i_t+1,d+1])],[],[]),
                                         And([],[djiid([j,0,i_t,d]),djiid([j,0,i_t+1,d+1])],[])
-                                    ])
+                                    ])])
             formulas.append(i_m_null_and_i_t_cost)
             # i_t == w <=> (d 0 it+1 d+1 <=> d 0 it d )
             i_m_null_and_i_t_dont_cost = Or([],[lambda_jia([j,i_t+1,transitions.index(wait_transition)])],[
+                                            Or([],[],[
                                                 And([djiid([j,0,i_t,d]),djiid([j,0,i_t+1,d])],[],[]),
                                                 And([],[djiid([j,0,i_t,d]),djiid([j,0,i_t+1,d])],[])
-                                         ])
+                                             ])])
             formulas.append(i_m_null_and_i_t_dont_cost)
 
     return And(positives,negatives,formulas)

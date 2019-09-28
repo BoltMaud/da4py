@@ -143,39 +143,39 @@ class Or(Operator):
         self.negativeVariables.append(var)
 
     def aux_clausesToCnf(self):
-        if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "OR" and len(self.qbf_formulas[0].getpositiveVariables())==0\
-                and len(self.qbf_formulas[0].getnegativeVariables())==0:
-           clauses = Or(self.positiveVariables,self.negativeVariables,self.qbf_formulas[0].qbf_formulas).aux_clausesToCnf()
-           return  clauses
-        else:
-            global NB_VARS
-            newVariables = []
-            for numVariable in range (NB_VARS, NB_VARS+len(self.qbf_formulas)):
-                newVariables.append(numVariable)
-            dnf = self.positiveVariables+ newVariables + [v*-1 for v in self.negativeVariables]
-            for i in range (0,len(self.qbf_formulas)):
-                # distribute implication
-                if self.qbf_formulas[i].type=="OR":
-                    self.qbf_formulas[i].negativeVariables=self.qbf_formulas[i].negativeVariables+[NB_VARS+i]
-                else :
-                    var=NB_VARS+i
-                    newListOfFormulas=[]
-                    for positiveVariable in self.qbf_formulas[i].positiveVariables:
-                        newListOfFormulas.append(Or([positiveVariable],[var],[]))
-                    for negativeVariable in self.qbf_formulas[i].negativeVariables:
-                        newListOfFormulas.append(Or([],[negativeVariable,var],[]))
-                    for formula in self.qbf_formulas[i].qbf_formulas:
-                        newListOfFormulas.append(Or([],[var],[formula]))
-                    self.qbf_formulas[i].qbf_formulas=newListOfFormulas
-                    self.qbf_formulas[i].negativeVariables=[]
-                    self.qbf_formulas[i].positiveVariables=[]
-            NB_VARS+=len(self.qbf_formulas)
-            if len(self.qbf_formulas)==0:
-                return [dnf]
+        #if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "OR" and len(self.qbf_formulas[0].getpositiveVariables())==0\
+        #        and len(self.qbf_formulas[0].getnegativeVariables())==0:
+         #  clauses = Or(self.positiveVariables,self.negativeVariables,self.qbf_formulas[0].qbf_formulas).aux_clausesToCnf()
+          # return  clauses
+        #else:
+        global NB_VARS
+        newVariables = []
+        for numVariable in range (NB_VARS, NB_VARS+len(self.qbf_formulas)):
+            newVariables.append(numVariable)
+        dnf = self.positiveVariables+ newVariables + [v*-1 for v in self.negativeVariables]
+        for i in range (0,len(self.qbf_formulas)):
+            # distribute implication
+            if self.qbf_formulas[i].type=="OR":
+                self.qbf_formulas[i].negativeVariables=self.qbf_formulas[i].negativeVariables+[NB_VARS+i]
             else :
-                clauses = And([],[],self.qbf_formulas).aux_clausesToCnf()
-                clauses.append(dnf)
-                return clauses
+                var=NB_VARS+i
+                newListOfFormulas=[]
+                for positiveVariable in self.qbf_formulas[i].positiveVariables:
+                    newListOfFormulas.append(Or([positiveVariable],[var],[]))
+                for negativeVariable in self.qbf_formulas[i].negativeVariables:
+                    newListOfFormulas.append(Or([],[negativeVariable,var],[]))
+                for formula in self.qbf_formulas[i].qbf_formulas:
+                    newListOfFormulas.append(Or([],[var],[formula]))
+                self.qbf_formulas[i].qbf_formulas=newListOfFormulas
+                self.qbf_formulas[i].negativeVariables=[]
+                self.qbf_formulas[i].positiveVariables=[]
+        NB_VARS+=len(self.qbf_formulas)
+        if len(self.qbf_formulas)==0:
+            return [dnf]
+        else :
+            clauses = And([],[],self.qbf_formulas).aux_clausesToCnf()
+            clauses.append(dnf)
+            return clauses
 
 class Pb_constraint :
     def __init__(self,type,weightedVariables,threshold):

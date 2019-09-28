@@ -35,7 +35,7 @@ def is_transition(places,transition,i,m_ip):
             formulas.append(And([m_ip([i-1,places.index(p)])],[m_ip([i,places.index(p)])],[]))
         elif p not in prePlaces and p in postPlaces:
             formulas.append(And([m_ip([i,places.index(p)])],[m_ip([i-1,places.index(p)])],[]))
-        else :
+        elif p not in prePlaces and p not in postPlaces :
             formulas.append(Or([],[],[And([m_ip([i,places.index(p)]),m_ip([i-1,places.index(p)])],[],[]),
                                       And([],[m_ip([i,places.index(p)]),m_ip([i-1,places.index(p)])],[])]))
     return And([],[],formulas)
@@ -63,6 +63,7 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
 
     # we create the number of variables needed for the transitions
     variablesGenerator.add(label_t, [(1,size_of_run+1),(0,len(transitions))])
+
     print(places)
     print(transitions)
     return (is_run(size_of_run, places, transitions,m0,variablesGenerator.getfunction(label_m),variablesGenerator.getfunction(label_t)),places,transitions)
