@@ -46,12 +46,12 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
         init= initialisation(transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                              variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                              variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,
-                             size_of_run,wait_transition,max_d=max_d)
+                             size_of_run+1,wait_transition,max_d=max_d)
         formulas.append(init)
         #print(init.__repr__(variables))
         rec=recursionEditDistance(variables,transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                               variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                              variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,size_of_run,wait_transition,max_d=max_d)
+                              variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,size_of_run+1,wait_transition,max_d=max_d)
         formulas+=(rec)
         #print(And([],[],rec).__repr__(variables))
 
@@ -68,61 +68,44 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
 
     ###############################
 
-    solver = Solver(name='g4',with_proof=True)
-    solver.append_formula(cnf)
-    solver.add_clause([-1*variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,2,1,1])])
-    bool=solver.solve()
-    #if not bool:
-    #    print("PROOF")
-    #    for var in solver.get_proof():
-    #        print(var)
-    model=solver.get_model()
 
     for d in range (1,max_d+1):
-        if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run-1,size_of_run-1,d]) in model:
-            print("D =",d)
+        wcnf.append([-1*variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d])],-10)
 
+    from pysat.examples.rc2 import RC2
+    solver = RC2(wcnf)
+    solver.compute()
 
-    for d in range (0,max_d+1):
-        if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d]) in model:
-            print("djiid true",size_of_run+1,size_of_run+1,d)
+    model=solver.model
+
 
     run="<"
     word="<<"
 
-    if variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN,[1,0]) in model:
-        print("dedant")
-    if variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[0,1,0]) in model:
-        print("dedannnt")
     for var in model:
-        if var > 0 and variables.getVarName(var)!=None:
-            if variables.getVarName(var).startswith("djiid"):
-                print("wala",variables.getVarName(var))
-            if variables.getVarName(var).startswith("tau"):
-                index= variables.getVarName(var).split("]")[0].split(",")[1]
-                i= variables.getVarName(var).split("[")[1].split(",")[0]
-                run+=" ("+i+", "+str(transitions[int(index)])+"),"
+        if variables.getVarName(var)!=None and variables.getVarName(var).startswith("tau"):
+            index= variables.getVarName(var).split("]")[0].split(",")[1]
+            i= variables.getVarName(var).split("[")[1].split(",")[0]
+            run+=" ("+i+", "+str(transitions[int(index)])+"),"
         if var > 0 and variables.getVarName(var)!=None:
             if variables.getVarName(var).startswith("lambda"):
-                print("eee",variables.getVarName(var))
-
                 index= variables.getVarName(var).split("]")[0].split(",")[2]
                 i= variables.getVarName(var).split("[")[1].split(",")[1]
                 word+=" ("+i+", "+str(transitions[int(index)])+"),"
+
     run+=">"
     word+=">>"
     print("RUN",run)
     print("WORD",word)
+    print(size_of_run)
+    print(max_d)
 
-    '''for var in model :
-    if var < 0:
-        var*=-1
-        if variables.getVarName(var)!=None and variables.getVarName(var).startswith("djiid"):
-            print("-",variables.getVarName(var))
-    else :
-    if variables.getVarName(var)!=None and variables.getVarName(var).startswith("djiid"):
-        print("+",variables.getVarName(var))'''
-
+    for l in range (0, len(traces)):
+        max=0
+        for d in range (0,max_d+1):
+            if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[l,size_of_run,size_of_run,d]) in model:
+                max=d
+        print(l," :",max)
 
     return None
 
