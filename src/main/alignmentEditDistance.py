@@ -1,4 +1,4 @@
-import timeit
+import time
 
 from pm4py.objects.petri.petrinet import PetriNet, Marking
 
@@ -22,67 +22,15 @@ BOOLEAN_VAR_MARKING_PN="m_ip"
 BOOLEAN_VAR_FIRING_TRANSITION_PN="tau_it"
 BOOLEAN_VAR_TRACES_ACTIONS="lambda_jia"
 BOOLEAN_VAR_EDIT_DISTANCE="djiid"
+WEIGHT_ON_CLAUSES_TO_REDUCE=-10
 
-def alignmentEditDistance():
-    return None
-
-def antiAlignmentEditDistance():
-    return None
-
-def multiAlignmentEditDistance():
-    return None
-
-def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="tau",max_d=10):
-    max_d+=1
-    variables=vg.VariablesGenerator()
-    net,wait_transition = add_wait_net(net)
-
-    pn_formulas, places, transitions = petri_net_to_SAT(net, m0,mf,variables,size_of_run,label_m=BOOLEAN_VAR_MARKING_PN,label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN)
-    log_formulas,traces = log_to_SAT(traces,transitions,variables,size_of_run,wait_transition)
-    variables.add(BOOLEAN_VAR_EDIT_DISTANCE,[(0, len(traces)),(0,size_of_run+1),(0,size_of_run+1),(0,max_d+1)])
-
-    formulas = [pn_formulas,log_formulas]
-    for j in range (0, len(traces)):
-        init= initialisation(transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
-                             variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                             variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,
-                             size_of_run+1,wait_transition,max_d=max_d)
-        formulas.append(init)
-        #print(init.__repr__(variables))
-        rec=recursionEditDistance(variables,transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
-                              variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                              variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,size_of_run+1,wait_transition,max_d=max_d)
-        formulas+=(rec)
-        #print(And([],[],rec).__repr__(variables))
-
-    nbVars=variables.iterator
-    full_formulas = And([],[],formulas)
-
-
-
-    cnf= full_formulas.clausesToCnf(nbVars)
-
-
-    wcnf= WCNF()
-    wcnf.extend(cnf)
-
-    ###############################
-
-
-    for d in range (1,max_d+1):
-        wcnf.append([-1*variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d])],-10)
-
-    from pysat.examples.rc2 import RC2
-    solver = RC2(wcnf)
-    solver.compute()
-
-    model=solver.model
-
+def alignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="tau",max_d=10,solver_name='g4'):
+    solution,variables,transitions,traces = generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, anti_alignment=False, silent_transition="tau",max_d=10,solver_name='g4')
 
     run="<"
     word="<<"
 
-    for var in model:
+    for var in solution:
         if variables.getVarName(var)!=None and variables.getVarName(var).startswith("tau"):
             index= variables.getVarName(var).split("]")[0].split(",")[1]
             i= variables.getVarName(var).split("[")[1].split(",")[0]
@@ -97,18 +45,69 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transi
     word+=">>"
     print("RUN",run)
     print("WORD",word)
-    print(size_of_run)
-    print(max_d)
 
     for l in range (0, len(traces)):
         max=0
         for d in range (0,max_d+1):
-            if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[l,size_of_run,size_of_run,d]) in model:
+            if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[l,size_of_run,size_of_run,d]) in solution:
                 max=d
         print(l," :",max)
 
     return None
 
+def antiAlignmentEditDistance():
+    return None
+
+def multiAlignmentEditDistance():
+    return None
+
+def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, anti_alignment=False, silent_transition="tau",max_d=10,solver_name='g4'):
+    variables=vg.VariablesGenerator()
+    net,wait_transition = add_wait_net(net)
+
+    start=time.time()
+
+    pn_formula, places, transitions = petri_net_to_SAT(net, m0,mf,variables,size_of_run,label_m=BOOLEAN_VAR_MARKING_PN,label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN)
+    log_formula,traces = log_to_SAT(traces,transitions,variables,size_of_run,wait_transition)
+    distances_formula = edit_distance_per_trace_to_SAT(transitions,variables,len(traces),size_of_run,wait_transition,max_d)
+
+    formulas = [pn_formula,log_formula]+distances_formula
+    full_formula = And([],[],formulas)
+    cnf= full_formula.clausesToCnf(variables.iterator)
+
+    wcnf= WCNF()
+    wcnf.extend(cnf)
+
+    weight_for_anti_alignment = -1 if not anti_alignment else 1
+    for d in range (1,max_d+1):
+        wcnf.append([weight_for_anti_alignment*variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[0,size_of_run,size_of_run,d])],WEIGHT_ON_CLAUSES_TO_REDUCE)
+
+    formula_time=time.time()
+    print("Construction de la formule =",formula_time-start)
+
+    solver = RC2(wcnf,solver=solver_name)
+    solver.compute()
+    end_solver=time.time()
+    print("Solve  =",end_solver-formula_time)
+    model=solver.model
+
+    return model, variables,transitions, traces
+
+
+def edit_distance_per_trace_to_SAT(transitions,variables,nbTraces,size_of_run,wait_transition,max_d):
+    variables.add(BOOLEAN_VAR_EDIT_DISTANCE,[(0, nbTraces),(0,size_of_run+1),(0,size_of_run+1),(0,max_d+1)])
+    formulas=[]
+    for j in range (0, nbTraces):
+        init= initialisation(transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+                             variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
+                             variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,
+                             size_of_run+1,wait_transition,max_d=max_d)
+        formulas.append(init)
+        rec=recursionEditDistance(variables,transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+                                  variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
+                                  variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE),j,size_of_run+1,wait_transition,max_d=max_d)
+        formulas+=(rec)
+    return formulas
 
 def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid,j, size_of_run,wait_transition,silent_transition="tau", max_d=10):
     formulas=[]
