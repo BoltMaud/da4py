@@ -133,12 +133,12 @@ def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transi
         init = initialisation(transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                               variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                               variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j,
-                              size_of_run + 1, wait_transition, max_d=max_d)
+                              size_of_run , wait_transition, max_d=max_d)
         formulas.append(init)
 
         rec = recursionEditDistance(variables, transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                                     variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                                    variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j, size_of_run + 1, wait_transition,
+                                    variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j, size_of_run , wait_transition,
                                     max_d=max_d)
 
         formulas += (rec)
@@ -149,8 +149,8 @@ def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transi
 def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_transition,
                           silent_transition="tau", max_d=10):
     formulas = []
-    for i_m in range(0, size_of_run - 1):
-        for i_t in range(0, size_of_run - 1):
+    for i_m in range(0, size_of_run ):
+        for i_t in range(0, size_of_run ):
             for d in range(0, max_d - 1):
                 # letters are equals or i_m == "tau" : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
 
@@ -174,7 +174,7 @@ def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, 
 
                 list_of_letters_are_diff = [And([tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], [], []) for
                                             t in range(0, len(transitions))]
-                
+
                 list_of_letters_are_diff.append(And([], [djiid([j, i_m + 1, i_t + 1, d + 1])], [Or([], [
                     djiid([j, i_m + 1, i_t, d]), djiid([j, i_m, i_t + 1, d])], [])]))
                 list_of_letters_are_diff.append(And([djiid([j, i_m + 1, i_t + 1, d + 1]),
@@ -220,7 +220,7 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
 
     formulas = []
     for d in range(0, max_d - 1):
-        for i_m in range(0, size_of_run - 1):
+        for i_m in range(0, size_of_run ):
             # (i_m <> w and i_m <> tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
             if silent_transition in transitions:
@@ -238,7 +238,7 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
                     And([], [djiid([j, i_m + 1, 0, d]), djiid([j, i_m, 0, d])], [])
                 ])
             formulas.append(i_t_null_and_i_m_dont_cost)
-        for i_t in range(0, size_of_run - 1):
+        for i_t in range(0, size_of_run ):
             # i_t <> w <=> (d 0 it+1 d+1 <=> d 0 it d )
             i_m_null_and_i_t_cost = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)])], [], [
                     And([djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d + 1])], [], []),
