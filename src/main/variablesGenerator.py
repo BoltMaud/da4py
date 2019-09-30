@@ -81,21 +81,3 @@ class VariablesGenerator:
                 return key + " [" + ', '.join(list_of_indexes) + ", " + str(number) + "]"
 
 
-'''
-test=VariablesGenerator()
-
-test.add("m",[(0,4),(0,5),(0,8)])
-print(test.iterator)
-test.add("x",[(0,2),(3,12),(0,6)])
-
-for i in range(0,4):
-    for j in range(0, 5):
-        for a in range(0, 8):
-            print(i,j,a,test.getVarNumber("m",[i,j,a]),test.getVarName(test.getVarNumber("m",[i,j,a])))
-
-
-for i in range(0,2):
-    for j in range(3, 12):
-        for a in range(0,6):
-            print(i,j,a,test.getVarNumber("x",[i,j,a]),test.getVarName(test.getVarNumber("x",[i,j,a])))
-'''

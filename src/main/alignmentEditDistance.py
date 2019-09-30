@@ -22,6 +22,7 @@ BOOLEAN_VAR_FIRING_TRANSITION_PN = "tau_it"
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 BOOLEAN_VAR_EDIT_DISTANCE = "djiid"
 WEIGHT_ON_CLAUSES_TO_REDUCE = -10
+NB_MAX_THREADS=50
 
 
 def alignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="tau", max_d=10, solver_name='g4'):
@@ -112,13 +113,10 @@ def edit_distance_per_trace_to_SAT(transitions, variables, nbTraces, size_of_run
     formulas = []
 
     threads = []
-
-    for i in range(nbTraces):
-        # We start one thread per url present.
+    for i in range (0,NB_MAX_THREADS):
         process = Thread(target=aux_for_threading,
-                         args=[formulas, transitions, variables, size_of_run, wait_transition, max_d, i])
+                         args=[formulas, transitions, variables, size_of_run, wait_transition, max_d, i,nbTraces])
         process.start()
-        print(process.name)
         threads.append(process)
 
     # We now pause execution on the main thread by 'joining' all of our started threads.
@@ -128,19 +126,22 @@ def edit_distance_per_trace_to_SAT(transitions, variables, nbTraces, size_of_run
     return formulas
 
 
-def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transition, max_d, j):
-    init = initialisation(transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
-                          variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                          variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j,
-                          size_of_run + 1, wait_transition, max_d=max_d)
-    formulas.append(init)
+def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transition, max_d, i, nbTraces):
 
-    rec = recursionEditDistance(variables, transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
-                                variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                                variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j, size_of_run + 1, wait_transition,
-                                max_d=max_d)
+    for j in range (i,nbTraces,NB_MAX_THREADS):
+        print(j)
+        init = initialisation(transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+                              variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
+                              variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j,
+                              size_of_run + 1, wait_transition, max_d=max_d)
+        formulas.append(init)
 
-    formulas += (rec)
+        rec = recursionEditDistance(variables, transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+                                    variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
+                                    variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j, size_of_run + 1, wait_transition,
+                                    max_d=max_d)
+
+        formulas += (rec)
 
     return True
 
@@ -227,38 +228,31 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
             condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
             if silent_transition in transitions:
                 condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
-            i_t_null_and_i_m_cost = Or([], [], [
-                Or(condition, [], []),
-                Or([], [], [
+            i_t_null_and_i_m_cost = Or(condition, [], [
                     And([djiid([j, i_m + 1, 0, d + 1]), djiid([j, i_m, 0, d])], [], []),
                     And([], [djiid([j, i_m + 1, 0, d + 1]), djiid([j, i_m, 0, d])], [])
                 ])
-            ])
             formulas.append(i_t_null_and_i_m_cost)
 
             # (i_m == w or i_m == tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             i_t_null_and_i_m_dont_cost = Or([], [], [
-                And([], condition, []),
-                Or([], [], [
+                    And([], condition, []),
                     And([djiid([j, i_m + 1, 0, d]), djiid([j, i_m, 0, d])], [], []),
                     And([], [djiid([j, i_m + 1, 0, d]), djiid([j, i_m, 0, d])], [])
                 ])
-            ])
             formulas.append(i_t_null_and_i_m_dont_cost)
         for i_t in range(0, size_of_run - 1):
             # i_t <> w <=> (d 0 it+1 d+1 <=> d 0 it d )
             i_m_null_and_i_t_cost = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)])], [], [
-                Or([], [], [
                     And([djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d + 1])], [], []),
                     And([], [djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d + 1])], [])
-                ])])
+                ])
             formulas.append(i_m_null_and_i_t_cost)
             # i_t == w <=> (d 0 it+1 d+1 <=> d 0 it d )
             i_m_null_and_i_t_dont_cost = Or([], [lambda_jia([j, i_t + 1, transitions.index(wait_transition)])], [
-                Or([], [], [
                     And([djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d])], [], []),
                     And([], [djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d])], [])
-                ])])
+                    ])
             formulas.append(i_m_null_and_i_t_dont_cost)
 
     return And(positives, negatives, formulas)

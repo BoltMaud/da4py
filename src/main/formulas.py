@@ -3,7 +3,6 @@ from pysat.formula import WCNF
 
 NB_VARS = 0
 
-
 class Qbf_formula:
     '''
     abstract class
@@ -148,96 +147,40 @@ class Or(Operator):
         self.negativeVariables.append(var)
 
     def aux_clausesToCnf(self):
-        # if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "OR" and len(self.qbf_formulas[0].getpositiveVariables())==0\
-        #        and len(self.qbf_formulas[0].getnegativeVariables())==0:
-        #  clauses = Or(self.positiveVariables,self.negativeVariables,self.qbf_formulas[0].qbf_formulas).aux_clausesToCnf()
-        # return  clauses
-        # else:
-        global NB_VARS
-        newVariables = []
-        for numVariable in range(NB_VARS, NB_VARS + len(self.qbf_formulas)):
-            newVariables.append(numVariable)
-        dnf = self.positiveVariables + newVariables + [v * -1 for v in self.negativeVariables]
-        for i in range(0, len(self.qbf_formulas)):
-            # distribute implication
-            if self.qbf_formulas[i].type == "OR":
-                self.qbf_formulas[i].negativeVariables = self.qbf_formulas[i].negativeVariables + [NB_VARS + i]
-            else:
-                var = NB_VARS + i
-                newListOfFormulas = []
-                for positiveVariable in self.qbf_formulas[i].positiveVariables:
-                    newListOfFormulas.append(Or([positiveVariable], [var], []))
-                for negativeVariable in self.qbf_formulas[i].negativeVariables:
-                    newListOfFormulas.append(Or([], [negativeVariable, var], []))
-                for formula in self.qbf_formulas[i].qbf_formulas:
-                    newListOfFormulas.append(Or([], [var], [formula]))
-                self.qbf_formulas[i].qbf_formulas = newListOfFormulas
-                self.qbf_formulas[i].negativeVariables = []
-                self.qbf_formulas[i].positiveVariables = []
-        NB_VARS += len(self.qbf_formulas)
-        if len(self.qbf_formulas) == 0:
-            return [dnf]
+        if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "OR" and len(self.qbf_formulas[0].getpositiveVariables())==0\
+                and len(self.qbf_formulas[0].getnegativeVariables())==0:
+            clauses = Or(self.positiveVariables,self.negativeVariables,self.qbf_formulas[0].qbf_formulas).aux_clausesToCnf()
+            return  clauses
         else:
-            clauses = And([], [], self.qbf_formulas).aux_clausesToCnf()
-            clauses.append(dnf)
-            return clauses
+            global NB_VARS
+            newVariables = []
+            for numVariable in range(NB_VARS, NB_VARS + len(self.qbf_formulas)):
+                newVariables.append(numVariable)
+            dnf = self.positiveVariables + newVariables + [v * -1 for v in self.negativeVariables]
+            for i in range(0, len(self.qbf_formulas)):
+                # distribute implication
+                if self.qbf_formulas[i].type == "OR":
+                    self.qbf_formulas[i].negativeVariables = self.qbf_formulas[i].negativeVariables + [NB_VARS + i]
+                else:
+                    var = NB_VARS + i
+                    newListOfFormulas = []
+                    for positiveVariable in self.qbf_formulas[i].positiveVariables:
+                        newListOfFormulas.append(Or([positiveVariable], [var], []))
+                    for negativeVariable in self.qbf_formulas[i].negativeVariables:
+                        newListOfFormulas.append(Or([], [negativeVariable, var], []))
+                    for formula in self.qbf_formulas[i].qbf_formulas:
+                        newListOfFormulas.append(Or([], [var], [formula]))
+                    self.qbf_formulas[i].qbf_formulas = newListOfFormulas
+                    self.qbf_formulas[i].negativeVariables = []
+                    self.qbf_formulas[i].positiveVariables = []
+            NB_VARS += len(self.qbf_formulas)
+            if len(self.qbf_formulas) == 0:
+                return [dnf]
+            else:
+                clauses = And([], [], self.qbf_formulas).aux_clausesToCnf()
+                clauses.append(dnf)
+                return clauses
 
 
-class Pb_constraint:
-    def __init__(self, type, weightedVariables, threshold):
-        self.type = type
-        self.weightedVariables = weightedVariables
-        self.threshold = threshold
-        self.nbVariables = len(weightedVariables)
-
-    def __str__(self):
-        result = ""
-        for (weight, variable) in self.weightedVariables:
-            result += weight + " x" + variable + " ";
-        result += self.type + " " + self.threshold + "\n"
-        return result
 
 
-class Pb_formula:
-    def __init__(self, listOfContraints, nbVars, pbObjective=[]):
-        self.listOfConstraints = listOfContraints
-        self.pbObjective = pbObjective
-        self.nbVariables = nbVars
-
-    def pbformulaToOpb(self, file, pbSolver):
-        if pbSolver in ["sat4j"]:
-            self.nbVariables += 1
-        writer = open(file, "w")
-        writer.write("* #variable= " + self.nbVariables + " #constraint= " + len(self.listOfConstraints) + "\n")
-        writer.write("min: ")
-        for (weight, variable) in self.pbObjective:
-            writer.write(weight + " x" + variable + " ")
-        for constraint in self.listOfConstraints:
-            writer.write(constraint.toString())
-        writer.close()
-
-
-class PB_leq(Pb_constraint):
-    def __init__(self, weightedVariables, threshold):
-        self.type = "<="
-        self.weightedVariables = weightedVariables
-        self.threshold = threshold
-
-
-class PB_geq(Pb_constraint):
-    def __init__(self, weightedVariables, threshold):
-        self.type = ">="
-        self.weightedVariables = weightedVariables
-        self.threshold = threshold
-
-
-class PB_eq(Pb_constraint):
-    def __init__(self, weightedVariables, threshold):
-        self.type = "="
-        self.weightedVariables = weightedVariables
-        self.threshold = threshold
-
-
-class Pb_objective:
-    def __init__(self, weightedVariables):
-        self.weightedVariables = weightedVariables
