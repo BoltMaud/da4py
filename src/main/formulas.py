@@ -119,6 +119,10 @@ class Operator(Qbf_formula):
         '''
         pass
 
+    @abstractmethod
+    def myoperatorToCnf(self):
+        pass
+
     def __repr__(self, variablesGenerator=None, time=0):
         '''
         Debug display of the formula
@@ -169,6 +173,16 @@ class And(Operator):
             left += cnf
         return dnfPositiveVariables + dnfNegativeVariables + left
 
+    def myoperatorToCnf(self):
+        listOfcnf=[]
+        for v in self.positiveVariables:
+            listOfcnf.append([v])
+        for v in self.negativeVariables:
+            listOfcnf.append([v * -1])
+        for f in self.qbf_formulas:
+            fToConf= f.myoperatorToCnf()
+            listOfcnf+=fToConf
+        return listOfcnf
 
 class Or(Operator):
     def __init__(self, positiveVariables, negativeVariables, qbf_formulas):
@@ -220,3 +234,42 @@ class Or(Operator):
                 clauses = And([], [], self.qbf_formulas).aux_operatorToCnf()
                 clauses.append(dnf)
                 return clauses
+
+    def myoperatorToCnf(self):
+        listOfClausesFromVars=[]
+        if (len(self.negativeVariables)+len(self.positiveVariables))==1 :
+            listOfClausesFromVars.append([-1*self.negativeVariables[0]]) if len(self.negativeVariables) else listOfClausesFromVars.append(self.positiveVariables)
+
+        for pos in range (0,len(self.positiveVariables)):
+            for neg in range (0,len(self.negativeVariables)):
+                listOfClausesFromVars.append([self.positiveVariables[pos],-1*self.negativeVariables[neg]])
+            for pos2 in range (pos+1,len(self.positiveVariables)):
+                listOfClausesFromVars.append([self.positiveVariables[pos],self.positiveVariables[pos2]])
+        for neg in range (0,len(self.negativeVariables)):
+            for neg2 in range (neg+1,len(self.negativeVariables)):
+                listOfClausesFromVars.append([-1*self.negativeVariables[neg2],-1*self.negativeVariables[neg]])
+
+
+        if len(self.qbf_formulas) > 0 :
+            finalListOfClauses=[]
+            listOfClausesFromFormulas=[]
+            listOfClausesPerFormulas=[]
+            for formula in self.qbf_formulas:
+                clauses=formula.myoperatorToCnf()
+                listOfClausesPerFormulas.append(clauses) # list of list of list of int
+
+            for i in range (0,len(listOfClausesPerFormulas)):
+                for j in range (i+1, len(listOfClausesPerFormulas)):
+                    for i_clauses in range (0,len(listOfClausesPerFormulas[i])):
+                        for j_clauses in range (0,len(listOfClausesPerFormulas[j])):
+                            temp = listOfClausesPerFormulas[i][i_clauses]+listOfClausesPerFormulas[j][j_clauses]
+                            listOfClausesFromFormulas.append(temp)
+
+            for fromVar in range(0, len(listOfClausesFromVars)):
+                for fromFormulas in range (0,len(listOfClausesFromFormulas)):
+                    temp = listOfClausesFromVars[fromVar]+listOfClausesFromFormulas[fromFormulas]
+                    finalListOfClauses.append(temp)
+            return finalListOfClauses
+        else:
+            return listOfClausesFromVars
+
