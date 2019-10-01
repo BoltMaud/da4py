@@ -23,7 +23,7 @@ NB_MAX_THREADS=50
 
 def alignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="tau", max_d=10, solver_name='g4'):
     solution, variables, transitions, traces = generalAlignmentEditDistance(net, m0, mf, traces, size_of_run,
-                                                                            anti_alignment=False,
+                                                                            anti_alignment=True,
                                                                             silent_transition="tau", max_d=max_d,
                                                                             solver_name='g4')
 
@@ -154,14 +154,11 @@ def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, 
 
                 condition = [
                     tau_it([i_m + 1, transitions.index(silent_transition)])] if silent_transition in transitions else []
-                letters_are_equals = Or([], [], [
+                letters_are_equals = Or([djiid([j, i_m + 1, i_t + 1, d])], [djiid([j, i_m, i_t, d])], [
                     And([], condition,
                         [Or([], [tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], []) for t in
                          range(0, len(transitions))]
-                        ),
-                    And([djiid([j, i_m, i_t, d]), djiid([j, i_m + 1, i_t + 1, d])], [], []),
-                    And([], [djiid([j, i_m, i_t, d]), djiid([j, i_m + 1, i_t + 1, d])], [])
-                ])
+                        )])
                 formulas.append(letters_are_equals)
 
                 # letters are diff : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
@@ -170,35 +167,21 @@ def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, 
                 if silent_transition in transitions:
                     condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
 
-                list_of_letters_are_diff = [And([tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], [], []) for
-                                            t in range(0, len(transitions))]
-
-                list_of_letters_are_diff.append(And([], [djiid([j, i_m + 1, i_t + 1, d + 1])], [Or([], [
-                    djiid([j, i_m + 1, i_t, d]), djiid([j, i_m, i_t + 1, d])], [])]))
-                list_of_letters_are_diff.append(And([djiid([j, i_m + 1, i_t + 1, d + 1]),
-                                                     djiid([j, i_m + 1, i_t, d]), djiid([j, i_m, i_t + 1, d])], [],
-                                                    []))
-                letters_are_diff = Or(condition,[],list_of_letters_are_diff)
+                condition.append(djiid([j, i_m + 1, i_t + 1, d + 1]))
+                letters_are_diff = Or(condition,[djiid([j, i_m + 1, i_t, d]),djiid([j, i_m, i_t + 1, d])],
+                                      [And([tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], [], []) for
+                                       t in range(0, len(transitions))])
                 formulas.append(letters_are_diff)
 
                 # ( u_t == w and u_m <> w) => ( d i_m i_t d <=> d i_m+1 i_t d
-                finish_run_of_model = Or([tau_it([i_m + 1, transitions.index(wait_transition)])],
-                                         [lambda_jia([j, i_t + 1, transitions.index(wait_transition)])], [
-                                                 And([djiid([j, i_m + 1, i_t + 1, d]), djiid([j, i_m + 1, i_t, d])], [],
-                                                     []),
-                                                 And([], [djiid([j, i_m + 1, i_t + 1, d]), djiid([j, i_m + 1, i_t, d])],
-                                                     [])
-                                         ])
+                finish_run_of_model = Or([tau_it([i_m + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t + 1, d])],
+                                         [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t, d])],
+                                         [])
                 formulas.append(finish_run_of_model)
 
                 # ( u_m == w and u_t <> w) => ( d i_m i_t d <=> d i_m i_t+1 d
-                finish_run_of_trace = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)])],
-                                         [tau_it([i_m + 1, transitions.index(wait_transition)])], [
-                                                 And([djiid([j, i_m + 1, i_t + 1, d]), djiid([j, i_m, i_t + 1, d])], [],
-                                                     []),
-                                                 And([], [djiid([j, i_m + 1, i_t + 1, d]), djiid([j, i_m, i_t + 1, d])],
-                                                     [])
-                                         ])
+                finish_run_of_trace = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t + 1, d])],
+                                         [tau_it([i_m + 1, transitions.index(wait_transition)]),djiid([j, i_m, i_t + 1, d])], [])
 
                 formulas.append(finish_run_of_trace)
 
@@ -223,31 +206,21 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
             condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
             if silent_transition in transitions:
                 condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
-            i_t_null_and_i_m_cost = Or(condition, [], [
-                    And([djiid([j, i_m + 1, 0, d + 1]), djiid([j, i_m, 0, d])], [], []),
-                    And([], [djiid([j, i_m + 1, 0, d + 1]), djiid([j, i_m, 0, d])], [])
-                ])
+            this_condition= condition
+            this_condition.append(djiid([j, i_m + 1, 0, d + 1]))
+            i_t_null_and_i_m_cost = Or(condition, [djiid([j, i_m, 0, d])], [])
             formulas.append(i_t_null_and_i_m_cost)
 
-            # (i_m == w or i_m == tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
-            i_t_null_and_i_m_dont_cost = Or([], [], [
-                    And([], condition, []),
-                    And([djiid([j, i_m + 1, 0, d]), djiid([j, i_m, 0, d])], [], []),
-                    And([], [djiid([j, i_m + 1, 0, d]), djiid([j, i_m, 0, d])], [])
-                ])
+            # (i_m == w or i_m == tau ) <=> (d im+1 0 d <= d im 0 d )
+            i_t_null_and_i_m_dont_cost = Or([djiid([j, i_m + 1, 0, d])], [djiid([j, i_m, 0, d])], [])
             formulas.append(i_t_null_and_i_m_dont_cost)
         for i_t in range(0, size_of_run ):
-            # i_t <> w <=> (d 0 it+1 d+1 <=> d 0 it d )
-            i_m_null_and_i_t_cost = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)])], [], [
-                    And([djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d + 1])], [], []),
-                    And([], [djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d + 1])], [])
-                ])
+            # i_t <> w <=> (d 0 it+1 d+1 <= d 0 it d )
+            i_m_null_and_i_t_cost = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, 0, i_t + 1, d + 1])],
+                                       [djiid([j, 0, i_t, d])], [])
             formulas.append(i_m_null_and_i_t_cost)
-            # i_t == w <=> (d 0 it+1 d+1 <=> d 0 it d )
-            i_m_null_and_i_t_dont_cost = Or([], [lambda_jia([j, i_t + 1, transitions.index(wait_transition)])], [
-                    And([djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d])], [], []),
-                    And([], [djiid([j, 0, i_t, d]), djiid([j, 0, i_t + 1, d])], [])
-                    ])
+            # i_t == w <=> (d 0 it+1 d <= d 0 it d )
+            i_m_null_and_i_t_dont_cost = Or([djiid([j, 0, i_t + 1, d])], [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, 0, i_t, d])], [])
             formulas.append(i_m_null_and_i_t_dont_cost)
 
     return And(positives, negatives, formulas)
