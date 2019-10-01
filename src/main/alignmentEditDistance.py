@@ -1,7 +1,5 @@
 import time
-
-from pm4py.objects.petri.petrinet import PetriNet, Marking
-
+from pm4py.objects.petri.petrinet import PetriNet
 from src.main.formulas import Or, And
 from src.main import variablesGenerator as vg
 from src.main.logToFormulas import log_to_SAT
@@ -9,10 +7,8 @@ from src.main.pnToFormulas import petri_net_to_SAT
 from pysat.examples.rc2 import RC2
 from pm4py.visualization.petrinet import factory as vizu
 from pysat.formula import WCNF
-
-import multiprocessing as mp
-from functools import partial
 from threading import Thread
+
 
 SAT_SOLVERS = ['cd', 'g3', 'g4', 'lgl', 'mcm', 'mcb', 'mpl', 'mc', 'm22', 'mgh']
 SILENT_TRANSITION = "tau"
@@ -90,10 +86,11 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, anti_alignmen
     wcnf.extend(cnf)
 
     weight_for_anti_alignment = -1 if not anti_alignment else 1
-    for d in range(1, max_d + 1):
-        wcnf.append([weight_for_anti_alignment * variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
-                                                                        [0, size_of_run, size_of_run, d])],
-                    WEIGHT_ON_CLAUSES_TO_REDUCE)
+    for j in range (0, len(traces)):
+        for d in range(1, max_d + 1):
+            wcnf.append([weight_for_anti_alignment * variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
+                                                                            [j, size_of_run, size_of_run, d])],
+                        WEIGHT_ON_CLAUSES_TO_REDUCE)
 
     formula_time = time.time()
     print("Construction de la formule =", formula_time - start)
@@ -148,6 +145,7 @@ def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transi
 
 def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_transition,
                           silent_transition="tau", max_d=10):
+
     formulas = []
     for i_m in range(0, size_of_run ):
         for i_t in range(0, size_of_run ):
@@ -211,8 +209,8 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
                    max_d=10):
     positives = []
     # diid is true for d = 0
-    for i_m in range(0, size_of_run):
-        for i_t in range(0, size_of_run):
+    for i_m in range(0, size_of_run+1):
+        for i_t in range(0, size_of_run+1):
             positives.append(djiid([j, i_m, i_t, 0]))
 
     # diid is false for 1 1 d and d >0
