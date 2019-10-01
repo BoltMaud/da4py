@@ -80,7 +80,7 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, anti_alignmen
 
     formulas = [pn_formula, log_formula] + distances_formula
     full_formula = And([], [], formulas)
-    cnf = full_formula.clausesToCnf(variables.iterator)
+    cnf = full_formula.operatorToCnf(variables.iterator)
 
     wcnf = WCNF()
     wcnf.extend(cnf)

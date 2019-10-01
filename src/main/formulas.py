@@ -1,11 +1,34 @@
-from abc import ABCMeta, abstractmethod
-from pysat.formula import WCNF
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+##
+## variablesGenerator.py
+##
+##  Created on: September, 2019
+##      Author: Boltenhagen Mathilde
+##      E-mail: boltenhagen lsv . fr
+##
+##
+##  Translation of Darksider in Ocaml by Thomas Chatain
+##
 
+'''
+
+This file contains a set of classes of boolean formulas :
+
+- Qbf_formula : Quantified boolean formulas
+- Operator : mother class of OR(positives, negatives, formulas) and AND(positives, negatives, formulas)
+
+'''
+
+# needed for abstract methods
+from abc import ABCMeta, abstractmethod
+
+# number of variables, used in clausesToCnf translation
 NB_VARS = 0
 
 class Qbf_formula:
     '''
-    abstract class
+    Abstract class
     Quantified boolean formulas
     '''
     __metaclass__ = metaclass = ABCMeta
@@ -21,12 +44,12 @@ class Qbf_formula:
 
 class Operator(Qbf_formula):
     '''
-    && and || formulas
+     Mother class of OR(positives, negatives, formulas) and AND(positives, negatives, formulas)
     '''
 
     def __init__(self, type, positiveVariables, negativeVariables, qbf_formulas):
         '''
-        :param type (string) : "&&" or "||"
+        :param type (string) : "AND" or "OR"
         :param positiveVariables (list of int)
         :param negatieVariables (list of int)
         :param qbf_formulas (list of QBF)
@@ -38,6 +61,8 @@ class Operator(Qbf_formula):
 
     def simplify(self):
         '''
+        Notice that this function don't work well :
+        Tests on number of variables show larger results when this function was used
         :return: QBF_formulas (only Operator)
         '''
         if len(self.qbf_formulas) == 0:
@@ -76,16 +101,31 @@ class Operator(Qbf_formula):
     def distributeImplication(self, var):
         pass
 
-    def clausesToCnf(self, nbVars):
+    def operatorToCnf(self, nbVars):
+        '''
+        SAT solvers need list of CNF clauses
+        :param nbVars (int) : number of variables will increase
+        :return list * list * int : CNF clauses
+        '''
         global NB_VARS
         NB_VARS = nbVars
-        return self.aux_clausesToCnf()
+        return self.aux_operatorToCnf()
 
     @abstractmethod
-    def aux_clausesToCnf(self):
+    def aux_operatorToCnf(self):
+        '''
+        Specific function depending on the operator
+        :return list * list * int : CNF clauses
+        '''
         pass
 
     def __repr__(self, variablesGenerator=None, time=0):
+        '''
+        Debug display of the formula
+        :param variablesGenerator: names of the variables
+        :param time: increases the <tab> display
+        :return (string)
+        '''
         if variablesGenerator == None:
             return self.type + str(self.positiveVariables) + str(self.negativeVariables) + str(self.qbf_formulas)
         str_of_formulas = ['\n' + q.__repr__(variablesGenerator, time + 1) for q in self.qbf_formulas]
@@ -116,7 +156,7 @@ class And(Operator):
         self.positiveVariables = []
         self.negativeVariables = []
 
-    def aux_clausesToCnf(self):
+    def aux_operatorToCnf(self):
         dnfPositiveVariables = []
         dnfNegativeVariables = []
         for v in self.positiveVariables:
@@ -125,7 +165,7 @@ class And(Operator):
             dnfNegativeVariables.append([v * -1])
         left = []
         for formula in self.qbf_formulas:
-            cnf = formula.aux_clausesToCnf()
+            cnf = formula.aux_operatorToCnf()
             left += cnf
         return dnfPositiveVariables + dnfNegativeVariables + left
 
@@ -146,10 +186,10 @@ class Or(Operator):
     def distributeImplication(self, var):
         self.negativeVariables.append(var)
 
-    def aux_clausesToCnf(self):
+    def aux_operatorToCnf(self):
         if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "OR" and len(self.qbf_formulas[0].getpositiveVariables())==0\
                 and len(self.qbf_formulas[0].getnegativeVariables())==0:
-            clauses = Or(self.positiveVariables,self.negativeVariables,self.qbf_formulas[0].qbf_formulas).aux_clausesToCnf()
+            clauses = Or(self.positiveVariables,self.negativeVariables,self.qbf_formulas[0].qbf_formulas).aux_operatorToCnf()
             return  clauses
         else:
             global NB_VARS
@@ -177,10 +217,6 @@ class Or(Operator):
             if len(self.qbf_formulas) == 0:
                 return [dnf]
             else:
-                clauses = And([], [], self.qbf_formulas).aux_clausesToCnf()
+                clauses = And([], [], self.qbf_formulas).aux_operatorToCnf()
                 clauses.append(dnf)
                 return clauses
-
-
-
-
