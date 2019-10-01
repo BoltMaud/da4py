@@ -28,7 +28,7 @@ NB_MAX_THREADS=50
 def alignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="tau", max_d=10, solver_name='g4'):
     solution, variables, transitions, traces = generalAlignmentEditDistance(net, m0, mf, traces, size_of_run,
                                                                             anti_alignment=False,
-                                                                            silent_transition="tau", max_d=10,
+                                                                            silent_transition="tau", max_d=max_d,
                                                                             solver_name='g4')
 
     run = "<"
@@ -52,7 +52,7 @@ def alignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="t
 
     for l in range(0, len(traces)):
         max = 0
-        for d in range(0, max_d + 1):
+        for d in range(0, max_d ):
             if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [l, size_of_run, size_of_run, d]) in solution:
                 max = d
         print(l, " :", max)
@@ -108,6 +108,7 @@ def generalAlignmentEditDistance(net, m0, mf, traces, size_of_run, anti_alignmen
 
 
 def edit_distance_per_trace_to_SAT(transitions, variables, nbTraces, size_of_run, wait_transition, max_d):
+
     variables.add(BOOLEAN_VAR_EDIT_DISTANCE,
                   [(0, nbTraces), (0, size_of_run + 1), (0, size_of_run + 1), (0, max_d + 1)])
     formulas = []
@@ -129,7 +130,6 @@ def edit_distance_per_trace_to_SAT(transitions, variables, nbTraces, size_of_run
 def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transition, max_d, i, nbTraces):
 
     for j in range (i,nbTraces,NB_MAX_THREADS):
-        print(j)
         init = initialisation(transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                               variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                               variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j,
@@ -151,7 +151,7 @@ def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, 
     formulas = []
     for i_m in range(0, size_of_run ):
         for i_t in range(0, size_of_run ):
-            for d in range(0, max_d - 1):
+            for d in range(0, max_d ):
                 # letters are equals or i_m == "tau" : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
 
                 condition = [
@@ -216,10 +216,10 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
             positives.append(djiid([j, i_m, i_t, 0]))
 
     # diid is false for 1 1 d and d >0
-    negatives = [djiid([j, 0, 0, d]) for d in range(1, max_d)]
+    negatives = [djiid([j, 0, 0, d]) for d in range(1, max_d+1)]
 
     formulas = []
-    for d in range(0, max_d - 1):
+    for d in range(0, max_d ):
         for i_m in range(0, size_of_run ):
             # (i_m <> w and i_m <> tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
