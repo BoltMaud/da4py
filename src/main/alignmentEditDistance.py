@@ -45,11 +45,13 @@ def alignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="t
     run += ">"
     print("RUN", run)
     print("WORDS", word)
+    print(max_d)
 
     for l in range(0, len(traces)):
         max = 0
-        for d in range(0, max_d ):
+        for d in range(0, max_d +1 ):
             if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [l, size_of_run, size_of_run, d]) in solution:
+                print(l, d)
                 max = d
         print(l, " :", max)
 
@@ -145,7 +147,7 @@ def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transi
 
 def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_transition,
                           silent_transition="tau", max_d=10):
-
+    print("max",max_d)
     formulas = []
     for i_m in range(0, size_of_run ):
         for i_t in range(0, size_of_run ):
@@ -154,7 +156,7 @@ def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, 
 
                 condition = [
                     tau_it([i_m + 1, transitions.index(silent_transition)])] if silent_transition in transitions else []
-                letters_are_equals = Or([djiid([j, i_m + 1, i_t + 1, d])], [djiid([j, i_m, i_t, d])], [
+                letters_are_equals = Or([djiid([j, i_m , i_t , d])], [djiid([j, i_m+1, i_t+1, d])], [
                     And([], condition,
                         [Or([], [tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], []) for t in
                          range(0, len(transitions))]
@@ -167,21 +169,23 @@ def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, 
                 if silent_transition in transitions:
                     condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
 
-                condition.append(djiid([j, i_m + 1, i_t + 1, d + 1]))
-                letters_are_diff = Or(condition,[djiid([j, i_m + 1, i_t, d]),djiid([j, i_m, i_t + 1, d])],
-                                      [And([tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], [], []) for
-                                       t in range(0, len(transitions))])
+                and_in_this=[And([tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], [], []) for
+                             t in range(0, len(transitions))]
+                and_in_this.append(And([djiid([j, i_m + 1, i_t, d]),djiid([j, i_m, i_t + 1, d])],[],[]))
+
+                letters_are_diff = Or(condition,[djiid([j, i_m + 1, i_t+1, d+1])],and_in_this
+                                      )
                 formulas.append(letters_are_diff)
 
                 # ( u_t == w and u_m <> w) => ( d i_m i_t d <=> d i_m+1 i_t d
-                finish_run_of_model = Or([tau_it([i_m + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t + 1, d])],
-                                         [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t, d])],
+                finish_run_of_model = Or([tau_it([i_m + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t , d])],
+                                         [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t+1, d])],
                                          [])
                 formulas.append(finish_run_of_model)
 
                 # ( u_m == w and u_t <> w) => ( d i_m i_t d <=> d i_m i_t+1 d
-                finish_run_of_trace = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, i_m + 1, i_t + 1, d])],
-                                         [tau_it([i_m + 1, transitions.index(wait_transition)]),djiid([j, i_m, i_t + 1, d])], [])
+                finish_run_of_trace = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, i_m , i_t +1, d])],
+                                         [tau_it([i_m + 1, transitions.index(wait_transition)]),djiid([j, i_m+1, i_t + 1, d])], [])
 
                 formulas.append(finish_run_of_trace)
 
@@ -201,26 +205,27 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
 
     formulas = []
     for d in range(0, max_d ):
+        print("hhee",d)
         for i_m in range(0, size_of_run ):
             # (i_m <> w and i_m <> tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
             if silent_transition in transitions:
                 condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
             this_condition= condition
-            this_condition.append(djiid([j, i_m + 1, 0, d + 1]))
+            this_condition.append(djiid([j, i_m+1 , 0, d+1 ]))
             i_t_null_and_i_m_cost = Or(condition, [djiid([j, i_m, 0, d])], [])
             formulas.append(i_t_null_and_i_m_cost)
 
             # (i_m == w or i_m == tau ) <=> (d im+1 0 d <= d im 0 d )
-            i_t_null_and_i_m_dont_cost = Or([djiid([j, i_m + 1, 0, d])], [djiid([j, i_m, 0, d])], [])
+            i_t_null_and_i_m_dont_cost = Or([djiid([j, i_m+1 , 0, d])], [djiid([j, i_m, 0, d])], [])
             formulas.append(i_t_null_and_i_m_dont_cost)
         for i_t in range(0, size_of_run ):
             # i_t <> w <=> (d 0 it+1 d+1 <= d 0 it d )
-            i_m_null_and_i_t_cost = Or([lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, 0, i_t + 1, d + 1])],
+            i_m_null_and_i_t_cost = Or([lambda_jia([j, i_t+1 , transitions.index(wait_transition)]),djiid([j, 0, i_t+1, d+1 ])],
                                        [djiid([j, 0, i_t, d])], [])
             formulas.append(i_m_null_and_i_t_cost)
             # i_t == w <=> (d 0 it+1 d <= d 0 it d )
-            i_m_null_and_i_t_dont_cost = Or([djiid([j, 0, i_t + 1, d])], [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, 0, i_t, d])], [])
+            i_m_null_and_i_t_dont_cost = Or([djiid([j, 0, i_t+1, d])], [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),djiid([j, 0, i_t, d])], [])
             formulas.append(i_m_null_and_i_t_dont_cost)
 
     return And(positives, negatives, formulas)
