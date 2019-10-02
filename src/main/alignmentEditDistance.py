@@ -156,7 +156,7 @@ def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, 
 
                 condition = [
                     tau_it([i_m + 1, transitions.index(silent_transition)])] if silent_transition in transitions else []
-                letters_are_equals = Or([djiid([j, i_m , i_t , d])], [djiid([j, i_m+1, i_t+1, d])], [
+                letters_are_equals = Or([djiid([j, i_m , i_t , d+1])], [djiid([j, i_m+1, i_t+1, d+1])], [
                     And([], condition,
                         [Or([], [tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], []) for t in
                          range(0, len(transitions))]
