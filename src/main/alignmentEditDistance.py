@@ -45,13 +45,11 @@ def alignmentEditDistance(net, m0, mf, traces, size_of_run, silent_transition="t
     run += ">"
     print("RUN", run)
     print("WORDS", word)
-    print(max_d)
 
     for l in range(0, len(traces)):
         max = 0
         for d in range(0, max_d +1 ):
             if variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [l, size_of_run, size_of_run, d]) in solution:
-                print(l, d)
                 max = d
         print(l, " :", max)
 
@@ -147,7 +145,6 @@ def aux_for_threading(formulas, transitions, variables, size_of_run, wait_transi
 
 def recursionEditDistance(variables, transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_transition,
                           silent_transition="tau", max_d=10):
-    print("max",max_d)
     formulas = []
     for i_m in range(0, size_of_run ):
         for i_t in range(0, size_of_run ):
@@ -205,7 +202,6 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
 
     formulas = []
     for d in range(0, max_d ):
-        print("hhee",d)
         for i_m in range(0, size_of_run ):
             # (i_m <> w and i_m <> tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
