@@ -28,7 +28,7 @@ def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_tr
     :param variablesGenerator (variablesGenerator) : to add the new boolean variables
     :param size_of_run (int) : to complete smaller words with "wait" transitions
     :param wait_transition (transition) : the "wait" transition
-    :param label_l (string) : name of the boolean variables of the log 
+    :param label_l (string) : name of the boolean variables of the log
     :return:
     '''
     traces = project_traces(traces_xes)

@@ -127,6 +127,7 @@ class ConformanceArtefacts:
 
     def exactAlignment(self, net, m0, mf, traces, silent_transition="tau"):
         '''
+        # TODO : be more precised
        The exactAlignment method takes a petri net and a log and compute the SAT formulas to get a run of the model
        that is the closest one to all the traces of the log. Notice that this function is presented for experimentation
        only.

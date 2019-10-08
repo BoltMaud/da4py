@@ -9,14 +9,11 @@ from pm4py.objects.petri import importer
 from pm4py.objects.log.importer.xes import factory as xes_importer
 from pm4py.visualization.petrinet import factory as vizu
 
-net, m0, mf = importer.pnml.import_net("/Users/mboltenhagen/Documents/PhD/Josep&Thomas/model-loops/M8.pnml")
-log = xes_importer.import_log("./examples/M8.xes")
+net, m0, mf = importer.pnml.import_net("./examples/medium/CloseToM8.pnml")
+log = xes_importer.import_log("./examples/medium/CloseToM8.xes")
 
-# net, m0, mf = importer.pnml.import_net("./examples/AouC.pnml")
-# log = xes_importer.import_log("./examples/A.xes")
 
-# vizu.apply(net,m0,mf).view()
-net, m0, mf = importer.pnml.import_net("/Users/mboltenhagen/Documents/PhD/Josep&Thomas/model-loops/M8.pnml")
+#vizu.apply(net,m0,mf).view()
 
 artefacts= ConformanceArtefacts(6,13)
 artefacts.multiAlignment(net,m0,mf,log)
