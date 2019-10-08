@@ -1,7 +1,36 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+##
+## variablesGenerator.py
+##
+##  Created on: September, 2019
+##      Author: Boltenhagen Mathilde
+##      E-mail: boltenhagen lsv . fr
+##
+##
+##  Translation of Darksider in Ocaml by Thomas Chatain
+##
+
+'''
+
+This file contains the translation of a Petrinet to a Formula.
+Scientific paper : _Alignment-based trace clustering_
+
+'''
+
 from src.main.formulas import Or, And
 
-
 def is_run(size_of_run, places, transitions, m0, m_ip, tau_it):
+    '''
+    The is_run method allows one to create the boolean paths of the petri net.
+    :param size_of_run (int): maximal size of the run
+    :param places (list) :
+    :param transitions (list) :
+    :param m0 (marking) : initial marking
+    :param m_ip (marking) : final marking
+    :param tau_it (function) : function to get the number of the boolean variables, see variablesGenerator.
+    :return:
+    '''
     positives = [m_ip([0, places.index(m)]) for m in m0]
     negatives = [m_ip([0, places.index(m)]) for m in places if m not in m0]
     formulas = [is_action(places, transitions, m0, i, m_ip, tau_it) for i in range(1, size_of_run + 1)]
@@ -11,12 +40,14 @@ def is_run(size_of_run, places, transitions, m0, m_ip, tau_it):
 
 def is_action(places, transitions, m0, i, m_ip, tau_it):
     '''
-    :param pn:
-    :param i:
-    :param m_ip:
-    :param tau_it:
-    :param sigma:
-    :return: give action of instant i
+    The is_action method used by is_run creates the formula of each instant. Which transition fired ?
+    :param places (list) :
+    :param transitions (list) :
+    :param m0 (marking) : initial marking
+    :param i (int) : instant in the run
+    :param m_ip (function) : function to get the number of the boolean variables of the markings, see variablesGenerator.
+    :param tau_it (function) : function to get the number of the boolean variables of the transitions, see variablesGenerator.
+    :return:
     '''
     # only one transition is true at instant i
     formulas = [Or([tau_it([i, transitions.index(t)]) for t in transitions], [], [])]
@@ -27,6 +58,14 @@ def is_action(places, transitions, m0, i, m_ip, tau_it):
 
 
 def is_transition(places, transition, i, m_ip):
+    '''
+    The is_transition method used by is_action creates the formula of a firing transition. Which marking is needed ?
+    :param places (list) :
+    :param transitions (list) :
+    :param i (int) : instant in the run
+    :param m_ip (function) : function to get the number of the boolean variables of the markings, see variablesGenerator.
+    :return:
+    '''
     formulas = []
     prePlaces = [a.source for a in transition.in_arcs]
     postPlaces = [a.target for a in transition.out_arcs]

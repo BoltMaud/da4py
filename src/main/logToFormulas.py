@@ -1,9 +1,36 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+##
+## variablesGenerator.py
+##
+##  Created on: September, 2019
+##      Author: Boltenhagen Mathilde
+##      E-mail: boltenhagen lsv . fr
+##
+##
+'''
+    This file contains the translation of a log to a Formula.
+
+    Scientific paper : _Encoding Conformance Checking Artefacts in SAT_
+    By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
+'''
 from pm4py.objects.log.util.log import project_traces
+BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
+
 
 from src.main.formulas import And
 
-
-def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_transition, label_l="lambda_jia"):
+def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_transition, label_l=BOOLEAN_VAR_TRACES_ACTIONS):
+    '''
+    This method returns the formulas of the Log.
+    :param traces_xes:
+    :param transitions (list)
+    :param variablesGenerator (variablesGenerator) : to add the new boolean variables
+    :param size_of_run (int) : to complete smaller words with "wait" transitions
+    :param wait_transition (transition) : the "wait" transition
+    :param label_l (string) : name of the boolean variables of the log 
+    :return:
+    '''
     traces = project_traces(traces_xes)
     print("IL Y A ",len(traces),"TRACES")
     variablesGenerator.add(label_l,[(0,len(traces)),(1,size_of_run+1),(0,len(transitions))])
