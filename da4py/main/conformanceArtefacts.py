@@ -36,6 +36,7 @@ from da4py.main import variablesGenerator as vg
 
 # a wait transition is added to complete words, :see __add_wait_net()
 WAIT_TRANSITION = "w"
+SILENT_LABEL="tau"
 
 # our boolean formulas depends on variables, see our paper for more information
 BOOLEAN_VAR_MARKING_PN = "m_ip"
@@ -74,8 +75,10 @@ class ConformanceArtefacts:
         '''
         self.__distance_type = distance
         self.__solver = solver
+        self.__silent_label=SILENT_LABEL
+        self.__max_nbTraces=None
 
-    def multiAlignment(self, net, m0, mf, traces, silent_transition="tau"):
+    def multiAlignment(self, net, m0, mf, traces):
         '''
         The multiAlignment method takes a petri net and a log and compute the SAT formulas to get a run of the model
         that is the closest one to all the traces of the log.
@@ -85,7 +88,6 @@ class ConformanceArtefacts:
         :param m0 (marking) : initial marking
         :param mf (marking) : final marking
         :param traces (pm4py.objects.log) : traces
-        :param silent_transition (string) : transition with this label will not increase the distances
         :return:
         '''
         self.__net = net
@@ -100,7 +102,7 @@ class ConformanceArtefacts:
         self.__solveWncf(wncf)
         return 0
 
-    def antiAlignment(self, net, m0, mf, traces, silent_transition="tau"):
+    def antiAlignment(self, net, m0, mf, traces):
         '''
         The antiAlignment method takes a petri net and a log and compute the SAT formulas to get a run of the model
         that is as far as possible to any traces of the log.
@@ -108,7 +110,6 @@ class ConformanceArtefacts:
         :param m0 (marking) : initial marking
         :param mf (marking) : final marking
         :param traces (pm4py.objects.log) : traces
-        :param silent_transition (string) : transition with this label will not increase the distances
         :return:
         '''
         self.__net = net
@@ -123,7 +124,7 @@ class ConformanceArtefacts:
         self.__solveWncf(wncf)
         return 0
 
-    def exactAlignment(self, net, m0, mf, traces, silent_transition="tau"):
+    def exactAlignment(self, net, m0, mf, traces):
         '''
         # TODO : be more precised
        The exactAlignment method takes a petri net and a log and compute the SAT formulas to get a run of the model
@@ -161,13 +162,14 @@ class ConformanceArtefacts:
 
         self.__start_time = time.time()
         # the model is translated to a formula
-        pn_formula, places, self.__transitions = petri_net_to_SAT(self.__net, m0, mf, self.__variables,
+        pn_formula, places, self.__transitions, self.__silent_transitions = petri_net_to_SAT(self.__net, m0, mf, self.__variables,
                                                                   self.__size_of_run,
                                                                   label_m=BOOLEAN_VAR_MARKING_PN,
-                                                                  label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN)
+                                                                  label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN,
+                                                                   silent_transition=self.__silent_label)
         # the log is translated to a formula
         log_formula, traces = log_to_SAT(traces, self.__transitions, self.__variables, self.__size_of_run,
-                                         wait_transition)
+                                         wait_transition,max_nbTraces=self.__max_nbTraces)
         self.__traces = traces
         return [pn_formula, log_formula], wait_transition
 
@@ -178,10 +180,10 @@ class ConformanceArtefacts:
         :return: formulas of the distance
         '''
         if self.__distance_type == HAMMING_DISTANCE:
-            return hamming_distance_per_trace_to_SAT(artefact, self.__transitions, self.__variables, len(self.__traces),
+            return hamming_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__variables, len(self.__traces),
                                                      self.__size_of_run)
         elif self.__distance_type == EDIT_DISTANCE:
-            return edit_distance_per_trace_to_SAT(artefact, self.__transitions, self.__variables, len(self.__traces),
+            return edit_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__variables, len(self.__traces),
                                                   self.__size_of_run,
                                                   wait_transition, self.__max_d)
         else:
@@ -256,6 +258,15 @@ class ConformanceArtefacts:
     def getDistance_type(self):
         return self.__distance_type
 
+    def setMax_nbTraces(self,nb):
+        self.__max_nbTraces=nb
+
+    def setSilentLabel(self,label):
+            self.__silent_label=label
+
+    def getSilentLabel(self):
+        return self.__silent_label
+
     def setSize_of_runAndMax_d(self,size,max_d):
         self.__size_of_run=size
         self.__max_d=max_d
@@ -324,7 +335,7 @@ class ConformanceArtefacts:
         :return:
         '''
         # TODO TRY/EXCEPT EVERYTHING HERE IS TO RE DO
-        traces = "<"
+        traces = ""
         for var in self.__model:
             if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
                     BOOLEAN_VAR_TRACES_ACTIONS):

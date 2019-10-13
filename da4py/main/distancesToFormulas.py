@@ -17,55 +17,66 @@ EXACT_ALIGNMENT = "exact"
 # Here starts the dark code : code that should be commented/refactored ect
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-def hamming_distance_per_trace_to_SAT(artefact, transitions, variables, nbTraces, size_of_run ):
+def hamming_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, variables, nbTraces, size_of_run ):
     variables.add(BOOLEAN_VAR_EDIT_DISTANCE, [(0, nbTraces), (1, size_of_run + 1)])
     bodyFunction = DICT_OF_HAMMING_BODY[artefact]
-    return bodyFunction(transitions, variables, nbTraces, size_of_run)
+    return bodyFunction(transitions, silent_transitions, variables, nbTraces, size_of_run)
 
 
-def bodyHammingDistance(transitions, variables, nbTraces, size_of_run):
+def bodyHammingDistance(transitions, silent_transitions, variables, nbTraces, size_of_run):
     formulas = []
     for j in range(0, nbTraces):
         for i in range(1, size_of_run + 1):
             for t in range(0, len(transitions)):
-                create_diff = Or([],
-                                 [],
-                                 [
-                                     And([variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [], [
-                                         Or([variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
-                                             variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])], [], [])
-                                     ]),
-                                     And([], [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
-                                              variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
-                                              variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])], [])
-                                 ])
+                if transitions[t] not in silent_transitions:
+                    create_diff = Or([],
+                                     [],
+                                     [
+                                         And([variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [], [
+                                             Or([variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
+                                                 variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])], [], [])
+                                         ]),
+                                         And([], [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                                  variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
+                                                  variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])], [])
+                                     ])
+                else :
+                    create_diff = Or([],[variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                           variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],[])
                 formulas.append(create_diff)
     return formulas
 
 
-def bodyHammingDistance_reducedForMultiAlignment(transitions, variables, nbTraces, size_of_run):
+def bodyHammingDistance_reducedForMultiAlignment(transitions, silent_transitions,variables, nbTraces, size_of_run):
     formulas = []
     for j in range(0, nbTraces):
         for i in range(1, size_of_run + 1):
             for t in range(0, len(transitions)):
-                create_diff = Or([variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
-                                  variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],
-                                 [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [])
+                if transitions[t] not in silent_transitions:
+                    create_diff = Or([variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
+                                     variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],
+                                   [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [])
+                else :
+                    create_diff = Or([],[variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                         variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],[])
                 formulas.append(create_diff)
     return formulas
 
 
-def bodyHammingDistance_reducedForAntiAlignment(transitions, variables, nbTraces, size_of_run):
+def bodyHammingDistance_reducedForAntiAlignment(transitions, silent_transitions,variables, nbTraces, size_of_run):
     formulas = []
     for j in range(0, nbTraces):
         for i in range(1, size_of_run + 1):
             for t in range(0, len(transitions)):
-                create_diff = Or([variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])],
-                                 [],
-                                 [And([],
-                                      [variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
-                                       variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],
-                                      [])])
+                if transitions[t] not in silent_transitions:
+                    create_diff = Or([],[variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],[
+                                        Or([],
+                                            [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                             variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),],[])
+                                    ])
+                else :
+                    create_diff = Or([],[variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                                       variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],[])
                 formulas.append(create_diff)
     return formulas
 
@@ -75,7 +86,8 @@ DICT_OF_HAMMING_BODY = {MULTI_ALIGNMENT: bodyHammingDistance_reducedForMultiAlig
                         EXACT_ALIGNMENT: bodyHammingDistance}
 
 
-def edit_distance_per_trace_to_SAT(artefact, transitions, variables, nbTraces, size_of_run, wait_transition, max_d):
+def edit_distance_per_trace_to_SAT(artefact, transitions,silent_transitions, variables, nbTraces, size_of_run, wait_transition, max_d):
+    initialisation_function=DICT_OF_EDIT_INIT[artefact]
     recursion_function = DICT_OF_EDIT_RECURSIONS[artefact]
     variables.add(BOOLEAN_VAR_EDIT_DISTANCE,
                   [(0, nbTraces), (0, size_of_run + 1), (0, size_of_run + 1), (0, max_d + 1)])
@@ -84,7 +96,7 @@ def edit_distance_per_trace_to_SAT(artefact, transitions, variables, nbTraces, s
     threads = []
     for i in range(0, NB_MAX_THREADS):
         process = Thread(target=aux_for_threading,
-                         args=[formulas, recursion_function, transitions, variables, size_of_run, wait_transition,
+                         args=[formulas, recursion_function,initialisation_function, transitions, silent_transitions,variables, size_of_run, wait_transition,
                                max_d, i, nbTraces])
         process.start()
         threads.append(process)
@@ -96,15 +108,15 @@ def edit_distance_per_trace_to_SAT(artefact, transitions, variables, nbTraces, s
     return formulas
 
 
-def aux_for_threading(formulas, recursion_function, transitions, variables, size_of_run, wait_transition, max_d, i,
+def aux_for_threading(formulas, recursion_function,initialisation_function, transitions,silent_transitions, variables, size_of_run, wait_transition, max_d, i,
                       nbTraces):
     for j in range(i, nbTraces, NB_MAX_THREADS):
-        init = initialisation(transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+        init = initialisation_function(transitions, silent_transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                               variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                               variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j,
                               size_of_run, wait_transition, max_d)
         formulas.append(init)
-        rec = recursion_function(transitions, variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+        rec = recursion_function(transitions, silent_transitions,variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
                                  variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
                                  variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j, size_of_run, wait_transition,
                                  max_d)
@@ -113,8 +125,7 @@ def aux_for_threading(formulas, recursion_function, transitions, variables, size
     return True
 
 
-def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_transition, max_d,
-                   silent_transition="tau"):
+def initialisation_ReducedForMultiAlignment(transitions, silent_transitions,tau_it, lambda_jia, djiid, j, size_of_run, wait_transition, max_d):
     positives = []
     # diid is true for d = 0
     for i_m in range(0, size_of_run + 1):
@@ -129,15 +140,17 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
         for i_m in range(0, size_of_run):
             # (i_m <> w and i_m <> tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
             condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
-            if silent_transition in transitions:
-                condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
+            for st in silent_transitions :
+                condition.append(tau_it([i_m + 1, transitions.index(st)]))
             this_condition = condition
             this_condition.append(djiid([j, i_m + 1, 0, d + 1]))
-            i_t_null_and_i_m_cost = Or(condition, [djiid([j, i_m, 0, d])], [])
+            i_t_null_and_i_m_cost = Or(this_condition, [djiid([j, i_m, 0, d])], [])
             formulas.append(i_t_null_and_i_m_cost)
 
             # (i_m == w or i_m == tau ) <=> (d im+1 0 d <= d im 0 d )
-            i_t_null_and_i_m_dont_cost = Or([djiid([j, i_m + 1, 0, d])], [djiid([j, i_m, 0, d])], [])
+            i_t_null_and_i_m_dont_cost = Or([djiid([j, i_m + 1, 0, d])], [djiid([j, i_m, 0, d])], [
+                                             And([],condition,[])
+                                            ])
             formulas.append(i_t_null_and_i_m_dont_cost)
         for i_t in range(0, size_of_run):
             # i_t <> w <=> (d 0 it+1 d+1 <= d 0 it d )
@@ -150,20 +163,58 @@ def initialisation(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_
                                             [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),
                                              djiid([j, 0, i_t, d])], [])
             formulas.append(i_m_null_and_i_t_dont_cost)
+    return And(positives, negatives, formulas)
 
+def initialisation_ReducedForAntiAlignment(transitions, silent_transitions,tau_it, lambda_jia, djiid, j, size_of_run, wait_transition, max_d):
+    positives = []
+    # diid is true for d = 0
+    for i_m in range(0, size_of_run + 1):
+        for i_t in range(0, size_of_run + 1):
+            positives.append(djiid([j, i_m, i_t, 0]))
+
+    # diid is false for 1 1 d and d >0
+    negatives = [djiid([j, 0, 0, d]) for d in range(1, max_d + 1)]
+
+    formulas = []
+    for d in range(0, max_d):
+        for i_m in range(0, size_of_run):
+            # (i_m <> w and i_m <> tau ) <=> (d im+1 0 d+1 <=> d im 0 d )
+            condition = [tau_it([i_m + 1, transitions.index(wait_transition)])]
+            for st in silent_transitions :
+                condition.append(tau_it([i_m + 1, transitions.index(st)]))
+            this_condition = condition
+            this_condition.append(djiid([j, i_m , 0, d ]))
+            i_t_null_and_i_m_cost = Or(this_condition, [djiid([j, i_m+1, 0, d+1])], [])
+            formulas.append(i_t_null_and_i_m_cost)
+
+            # (i_m == w or i_m == tau ) <=> (d im+1 0 d <= d im 0 d )
+            i_t_null_and_i_m_dont_cost = Or([djiid([j, i_m , 0, d])], [djiid([j, i_m+1, 0, d])], [
+                                            And([],condition,[])
+                                        ])
+            formulas.append(i_t_null_and_i_m_dont_cost)
+        for i_t in range(0, size_of_run):
+            # i_t <> w <=> (d 0 it+1 d+1 <= d 0 it d )
+            i_m_null_and_i_t_cost = Or(
+                [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]), djiid([j, 0, i_t , d ])],
+                [djiid([j, 0, i_t+1, d+1])], [])
+            formulas.append(i_m_null_and_i_t_cost)
+            # i_t == w <=> (d 0 it+1 d <= d 0 it d )
+            i_m_null_and_i_t_dont_cost = Or([djiid([j, 0, i_t , d])],
+                                            [lambda_jia([j, i_t + 1, transitions.index(wait_transition)]),
+                                             djiid([j, 0, i_t+1, d])], [])
+            formulas.append(i_m_null_and_i_t_dont_cost)
     return And(positives, negatives, formulas)
 
 
-def recursionEditDistance(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wait_transition, max_d,
-                          silent_transition="tau"):
+
+def recursionEditDistance(transitions, silent_transitions,tau_it, lambda_jia, djiid, j, size_of_run, wait_transition, max_d):
     formulas = []
     for i_m in range(0, size_of_run):
         for i_t in range(0, size_of_run):
             for d in range(0, max_d):
                 # letters are equals or i_m == "tau" : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
 
-                condition = [
-                    tau_it([i_m + 1, transitions.index(silent_transition)])] if silent_transition in transitions else []
+                condition = [tau_it([i_m + 1, transitions.index(st)]) for st in silent_transitions]
                 letters_are_equals = Or([], [], [
                     And([], condition,
                         [Or([], [tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], []) for t in
@@ -177,8 +228,8 @@ def recursionEditDistance(transitions, tau_it, lambda_jia, djiid, j, size_of_run
                 # letters are diff : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
                 condition = [tau_it([i_m + 1, transitions.index(wait_transition)]),
                              lambda_jia([j, i_t + 1, transitions.index(wait_transition)])]
-                if silent_transition in transitions:
-                    condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
+                for st in silent_transitions :
+                    condition.append(tau_it([i_m + 1, transitions.index(st)]))
 
                 list_of_letters_are_diff = [And([tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], [], []) for
                                             t in range(0, len(transitions))]
@@ -215,8 +266,7 @@ def recursionEditDistance(transitions, tau_it, lambda_jia, djiid, j, size_of_run
     return formulas
 
 
-def recursionEditDistance__reducedForAntiAlignment(transitions, tau_it, lambda_jia, djiid, j, size_of_run, wt, max_d,
-                                                   st="tau"):
+def recursionEditDistance__reducedForAntiAlignment(transitions, silent_transitions,tau_it, lambda_jia, djiid, j, size_of_run, wt, max_d):
     def t(transition):
         return transitions.index(transition)
 
@@ -230,7 +280,7 @@ def recursionEditDistance__reducedForAntiAlignment(transitions, tau_it, lambda_j
                                         [djiid([j, i_m + 1, i_t + 1, d + 1])],
                                         [
                                             And([],
-                                                [tau_it([i_m + 1, t(st)])] if st in transitions else [],
+                                                [tau_it([i_m + 1, t(st)]) for st in silent_transitions],
                                                 [Or([],
                                                     [tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])],
                                                     []) for t in range(0, len(transitions))
@@ -241,7 +291,7 @@ def recursionEditDistance__reducedForAntiAlignment(transitions, tau_it, lambda_j
                 # letters are diff : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
                 condition = [tau_it([i_m + 1, t(wt)]),
                              lambda_jia([j, i_t + 1, t(wt)])]
-                if st in transitions:
+                for st in silent_transitions:
                     condition.append(tau_it([i_m + 1, t(st)]))
 
                 and_in_this = [And([tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], [], []) for
@@ -267,16 +317,15 @@ def recursionEditDistance__reducedForAntiAlignment(transitions, tau_it, lambda_j
     return formulas
 
 
-def recursionEditDistance_reducedForMultiAlignment(transitions, tau_it, lambda_jia, djiid, j, size_of_run,
-                                                   wait_transition, max_d,
-                                                   silent_transition="tau"):
+def recursionEditDistance_reducedForMultiAlignment(transitions,silent_transitions, tau_it, lambda_jia, djiid, j, size_of_run,
+                                                   wait_transition, max_d):
     formulas = []
     for i_m in range(0, size_of_run):
         for i_t in range(0, size_of_run):
             for d in range(0, max_d):
                 # letters are equals or i_m == "tau" : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
                 condition = [
-                    tau_it([i_m + 1, transitions.index(silent_transition)])] if silent_transition in transitions else []
+                    tau_it([i_m + 1, transitions.index(st)]) for st in silent_transitions]
                 letters_are_equals = Or([djiid([j, i_m + 1, i_t + 1, d])], [djiid([j, i_m, i_t, d])], [
                     And([], condition,
                         [Or([], [tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], []) for t in
@@ -287,8 +336,8 @@ def recursionEditDistance_reducedForMultiAlignment(transitions, tau_it, lambda_j
                 # letters are diff : i_t+1 == i_m+1 => (d i_t i_m d <=> d i_t+1 i_m+1 d)
                 condition = [tau_it([i_m + 1, transitions.index(wait_transition)]),
                              lambda_jia([j, i_t + 1, transitions.index(wait_transition)])]
-                if silent_transition in transitions:
-                    condition.append(tau_it([i_m + 1, transitions.index(silent_transition)]))
+                for st in silent_transitions :
+                    condition.append(tau_it([i_m + 1, transitions.index(st)]))
 
                 condition.append(djiid([j, i_m + 1, i_t + 1, d + 1]))
                 letters_are_diff = Or(condition, [djiid([j, i_m + 1, i_t, d]), djiid([j, i_m, i_t + 1, d])],
@@ -315,3 +364,6 @@ def recursionEditDistance_reducedForMultiAlignment(transitions, tau_it, lambda_j
 DICT_OF_EDIT_RECURSIONS = {MULTI_ALIGNMENT: recursionEditDistance_reducedForMultiAlignment,
                            ANTI_ALIGNMENT: recursionEditDistance__reducedForAntiAlignment,
                            EXACT_ALIGNMENT: recursionEditDistance}
+DICT_OF_EDIT_INIT= {MULTI_ALIGNMENT: initialisation_ReducedForMultiAlignment,
+                    ANTI_ALIGNMENT: initialisation_ReducedForAntiAlignment,
+                    EXACT_ALIGNMENT: initialisation_ReducedForMultiAlignment}

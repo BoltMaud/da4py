@@ -100,6 +100,7 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
 
     # we need a ordered list to get int per place/transition (for the variablesgenerator)
     transitions = [t for t in net.transitions]
+    silent_transitions=[t for t in net.transitions if t.label==silent_transition]
     places = [p for p in net.places]
 
     # we create the number of variables needed for the markings
@@ -111,4 +112,4 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     print(places)
     print(transitions)
     return (is_run(size_of_run, places, transitions, m0, variablesGenerator.getfunction(label_m),
-                   variablesGenerator.getfunction(label_t)), places, transitions)
+                   variablesGenerator.getfunction(label_t)), places, transitions,silent_transitions)
