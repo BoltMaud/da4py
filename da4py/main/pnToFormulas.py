@@ -18,7 +18,7 @@ Scientific paper : _Alignment-based trace clustering_
 
 '''
 
-from src.main.formulas import Or, And
+from da4py.main.formulas import Or, And
 
 def is_run(size_of_run, places, transitions, m0, m_ip, tau_it):
     '''

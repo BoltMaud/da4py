@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="da4py-BoltMaud",
+    name="da4py",
     version="0.0.1",
     author="Boltenhagen Mathilde",
     author_email="boltenhagen@lsv.fr",

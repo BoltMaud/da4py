@@ -2,3 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+dist/*
+build/*
+da4py_BoltMaud.egg-info/*
+.idea/*

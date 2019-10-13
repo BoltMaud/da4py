@@ -1,5 +1,5 @@
 from threading import Thread
-from src.main.formulas import Or, And
+from da4py.main.formulas import Or, And
 
 SILENT_TRANSITION = "tau"
 WAIT_TRANSITION = "w"

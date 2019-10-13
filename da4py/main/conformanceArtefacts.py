@@ -28,11 +28,11 @@ from pm4py.objects.petri.petrinet import PetriNet
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
 
-from src.main.distancesToFormulas import hamming_distance_per_trace_to_SAT, edit_distance_per_trace_to_SAT
-from src.main.formulas import And
-from src.main.logToFormulas import log_to_SAT
-from src.main.pnToFormulas import petri_net_to_SAT
-from src.main import variablesGenerator as vg
+from da4py.main.distancesToFormulas import hamming_distance_per_trace_to_SAT, edit_distance_per_trace_to_SAT
+from da4py.main.formulas import And
+from da4py.main.logToFormulas import log_to_SAT
+from da4py.main.pnToFormulas import petri_net_to_SAT
+from da4py.main import variablesGenerator as vg
 
 # a wait transition is added to complete words, :see __add_wait_net()
 WAIT_TRANSITION = "w"
@@ -66,16 +66,12 @@ class ConformanceArtefacts:
 
     '''
 
-    def __init__(self, size_of_run, max_d=10, distance=EDIT_DISTANCE, solver="g4"):
+    def __init__(self, distance=EDIT_DISTANCE, solver="g4"):
         '''
         Conformance artefact share some initialisation
-        :param size_of_run (int) : maximal size of run, too limit the run when there are loops
-        :param max_d (int) :
         :param distance (string) : value = HAMMING_DISTANCE or EDIT_DISTANCE
         :param solver: one of the SAT solver of the librairy pysat
         '''
-        self.__size_of_run = size_of_run
-        self.__max_d = max_d
         self.__distance_type = distance
         self.__solver = solver
 
@@ -83,6 +79,8 @@ class ConformanceArtefacts:
         '''
         The multiAlignment method takes a petri net and a log and compute the SAT formulas to get a run of the model
         that is the closest one to all the traces of the log.
+        :param size_of_run (int) : maximal size of run, too limit the run when there are loops
+        :param max_d (int) :
         :param net (Petrinet) : model
         :param m0 (marking) : initial marking
         :param mf (marking) : final marking
@@ -161,7 +159,7 @@ class ConformanceArtefacts:
         # we add a "wait" transition to complete the words
         wait_transition = self.__add_wait_net()
 
-        start = time.time()
+        self.__start_time = time.time()
         # the model is translated to a formula
         pn_formula, places, self.__transitions = petri_net_to_SAT(self.__net, m0, mf, self.__variables,
                                                                   self.__size_of_run,
@@ -174,6 +172,11 @@ class ConformanceArtefacts:
         return [pn_formula, log_formula], wait_transition
 
     def __compute_distance(self, artefact, wait_transition):
+        '''
+        :param artefact: EXACT_ALIGNMENT or MULTI_ALIGNMENT or ANTI_ALIGNMENT, see globale variables
+        :param wait_transition: see add_wait_transition
+        :return: formulas of the distance
+        '''
         if self.__distance_type == HAMMING_DISTANCE:
             return hamming_distance_per_trace_to_SAT(artefact, self.__transitions, self.__variables, len(self.__traces),
                                                      self.__size_of_run)
@@ -216,8 +219,52 @@ class ConformanceArtefacts:
                 for i in range(1, self.__size_of_run + 1):
                     wcnf.append([weightsOnVariables * self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [j, i])],
                                 WEIGHT_ON_CLAUSES_TO_REDUCE)
-        formula_time = time.time()
+        self.__formula_time = time.time()
         return wcnf
+
+    def setSize_of_run(self,size):
+        '''
+        Sets the maximal size of the run
+        :param size (int)
+        '''
+        self.__size_of_run=size
+
+    def getSize_of_run(self):
+        '''
+        Gets the maximal size of the run
+        :return (int)
+        '''
+        return self.__size_of_run
+
+    def getMax_d(self):
+        '''
+        Gets the maximal distance computed, for Edit Distance only
+        :return (int)
+        '''
+        return self.__max_d
+
+    def setMax_d(self,max_d):
+        '''
+        Sets the maximal distance
+        :param max_d:
+        '''
+        self.__max_d=max_d
+
+    def setDistance_type(self,distance):
+        self.__distance_type=distance
+
+    def getDistance_type(self):
+        return self.__distance_type
+
+    def setSize_of_runAndMax_d(self,size,max_d):
+        self.__size_of_run=size
+        self.__max_d=max_d
+
+    def getForumulaTime(self):
+        return self.__formula_time-self.__start_time
+
+    def getTotalTime(self):
+        return self.__total_time-self.__start_time
 
     def __solveWncf(self, wcnf):
         '''
@@ -229,6 +276,7 @@ class ConformanceArtefacts:
         solver.compute()
         end_solver = time.time()
         self.__model = solver.model
+        self.__total_time=time.time()
 
     def __add_wait_net(self):
         '''

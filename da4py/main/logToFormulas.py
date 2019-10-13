@@ -18,7 +18,7 @@ from pm4py.objects.log.util.log import project_traces
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 
 
-from src.main.formulas import And
+from da4py.main.formulas import And
 
 def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_transition, label_l=BOOLEAN_VAR_TRACES_ACTIONS):
     '''
