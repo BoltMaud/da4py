@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 ##
-## variablesGenerator.py
+## conformanceArtefacts.py
 ##
 ##  Created on: September, 2019
 ##      Author: Boltenhagen Mathilde

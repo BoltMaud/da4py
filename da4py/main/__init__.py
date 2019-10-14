@@ -1,1 +1,2 @@
-from da4py.main import conformanceArtefacts,distancesToFormulas,formulas,logToFormulas,pnToFormulas,variablesGenerator
+from da4py.main import conformanceArtefacts, distancesToFormulas, formulas, logToFormulas, pnToFormulas, \
+    variablesGenerator

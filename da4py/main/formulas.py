@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 ##
-## variablesGenerator.py
+## formulas.py
 ##
 ##  Created on: September, 2019
 ##      Author: Boltenhagen Mathilde
@@ -25,6 +25,7 @@ from abc import ABCMeta, abstractmethod
 
 # number of variables, used in clausesToCnf translation
 NB_VARS = 0
+
 
 class Qbf_formula:
     '''
@@ -174,15 +175,16 @@ class And(Operator):
         return dnfPositiveVariables + dnfNegativeVariables + left
 
     def myoperatorToCnf(self):
-        listOfcnf=[]
+        listOfcnf = []
         for v in self.positiveVariables:
             listOfcnf.append([v])
         for v in self.negativeVariables:
             listOfcnf.append([v * -1])
         for f in self.qbf_formulas:
-            fToConf= f.myoperatorToCnf()
-            listOfcnf+=fToConf
+            fToConf = f.myoperatorToCnf()
+            listOfcnf += fToConf
         return listOfcnf
+
 
 class Or(Operator):
     def __init__(self, positiveVariables, negativeVariables, qbf_formulas):
@@ -201,10 +203,12 @@ class Or(Operator):
         self.negativeVariables.append(var)
 
     def aux_operatorToCnf(self):
-        if len(self.qbf_formulas)==1 and self.qbf_formulas[0].type == "OR" and len(self.qbf_formulas[0].getpositiveVariables())==0\
-                and len(self.qbf_formulas[0].getnegativeVariables())==0:
-            clauses = Or(self.positiveVariables,self.negativeVariables,self.qbf_formulas[0].qbf_formulas).aux_operatorToCnf()
-            return  clauses
+        if len(self.qbf_formulas) == 1 and self.qbf_formulas[0].type == "OR" and len(
+                self.qbf_formulas[0].getpositiveVariables()) == 0 \
+                and len(self.qbf_formulas[0].getnegativeVariables()) == 0:
+            clauses = Or(self.positiveVariables, self.negativeVariables,
+                         self.qbf_formulas[0].qbf_formulas).aux_operatorToCnf()
+            return clauses
         else:
             global NB_VARS
             newVariables = []
@@ -236,40 +240,39 @@ class Or(Operator):
                 return clauses
 
     def myoperatorToCnf(self):
-        listOfClausesFromVars=[]
-        if (len(self.negativeVariables)+len(self.positiveVariables))==1 :
-            listOfClausesFromVars.append([-1*self.negativeVariables[0]]) if len(self.negativeVariables) else listOfClausesFromVars.append(self.positiveVariables)
+        listOfClausesFromVars = []
+        if (len(self.negativeVariables) + len(self.positiveVariables)) == 1:
+            listOfClausesFromVars.append([-1 * self.negativeVariables[0]]) if len(
+                self.negativeVariables) else listOfClausesFromVars.append(self.positiveVariables)
 
-        for pos in range (0,len(self.positiveVariables)):
-            for neg in range (0,len(self.negativeVariables)):
-                listOfClausesFromVars.append([self.positiveVariables[pos],-1*self.negativeVariables[neg]])
-            for pos2 in range (pos+1,len(self.positiveVariables)):
-                listOfClausesFromVars.append([self.positiveVariables[pos],self.positiveVariables[pos2]])
-        for neg in range (0,len(self.negativeVariables)):
-            for neg2 in range (neg+1,len(self.negativeVariables)):
-                listOfClausesFromVars.append([-1*self.negativeVariables[neg2],-1*self.negativeVariables[neg]])
+        for pos in range(0, len(self.positiveVariables)):
+            for neg in range(0, len(self.negativeVariables)):
+                listOfClausesFromVars.append([self.positiveVariables[pos], -1 * self.negativeVariables[neg]])
+            for pos2 in range(pos + 1, len(self.positiveVariables)):
+                listOfClausesFromVars.append([self.positiveVariables[pos], self.positiveVariables[pos2]])
+        for neg in range(0, len(self.negativeVariables)):
+            for neg2 in range(neg + 1, len(self.negativeVariables)):
+                listOfClausesFromVars.append([-1 * self.negativeVariables[neg2], -1 * self.negativeVariables[neg]])
 
-
-        if len(self.qbf_formulas) > 0 :
-            finalListOfClauses=[]
-            listOfClausesFromFormulas=[]
-            listOfClausesPerFormulas=[]
+        if len(self.qbf_formulas) > 0:
+            finalListOfClauses = []
+            listOfClausesFromFormulas = []
+            listOfClausesPerFormulas = []
             for formula in self.qbf_formulas:
-                clauses=formula.myoperatorToCnf()
-                listOfClausesPerFormulas.append(clauses) # list of list of list of int
+                clauses = formula.myoperatorToCnf()
+                listOfClausesPerFormulas.append(clauses)  # list of list of list of int
 
-            for i in range (0,len(listOfClausesPerFormulas)):
-                for j in range (i+1, len(listOfClausesPerFormulas)):
-                    for i_clauses in range (0,len(listOfClausesPerFormulas[i])):
-                        for j_clauses in range (0,len(listOfClausesPerFormulas[j])):
-                            temp = listOfClausesPerFormulas[i][i_clauses]+listOfClausesPerFormulas[j][j_clauses]
+            for i in range(0, len(listOfClausesPerFormulas)):
+                for j in range(i + 1, len(listOfClausesPerFormulas)):
+                    for i_clauses in range(0, len(listOfClausesPerFormulas[i])):
+                        for j_clauses in range(0, len(listOfClausesPerFormulas[j])):
+                            temp = listOfClausesPerFormulas[i][i_clauses] + listOfClausesPerFormulas[j][j_clauses]
                             listOfClausesFromFormulas.append(temp)
 
             for fromVar in range(0, len(listOfClausesFromVars)):
-                for fromFormulas in range (0,len(listOfClausesFromFormulas)):
-                    temp = listOfClausesFromVars[fromVar]+listOfClausesFromFormulas[fromFormulas]
+                for fromFormulas in range(0, len(listOfClausesFromFormulas)):
+                    temp = listOfClausesFromVars[fromVar] + listOfClausesFromFormulas[fromFormulas]
                     finalListOfClauses.append(temp)
             return finalListOfClauses
         else:
             return listOfClausesFromVars
-
