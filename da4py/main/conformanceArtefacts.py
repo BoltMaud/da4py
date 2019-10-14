@@ -309,55 +309,59 @@ class ConformanceArtefacts:
         self.__net.transitions.add(wait_transition)
         return wait_transition
 
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-# Here starts the dark code : code that should be redo
-# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
     def getRun(self):
         '''
-        NO DESCRIPTION FOR BAD METHODS
-        :return:
+        Returns a very simple string version of the multi or anti alignment
+        :return (string) : output run
         '''
-        # TODO TRY/EXCEPT EVERYTHING HERE IS TO RE DO
-        run = "<"
-        for var in self.__model:
-            if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
-                    BOOLEAN_VAR_FIRING_TRANSITION_PN):
-                index = self.__variables.getVarName(var).split("]")[0].split(",")[1]
-                i = self.__variables.getVarName(var).split("[")[1].split(",")[0]
-                run += " (" + i + ", " + str(self.__transitions[int(index)]) + "),"
-        run += ">"
-        return run
+        try :
+            run = "<"
+            for var in self.__model:
+                if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
+                        BOOLEAN_VAR_FIRING_TRANSITION_PN):
+                    index = self.__variables.getVarName(var).split("]")[0].split(",")[1]
+                    i = self.__variables.getVarName(var).split("[")[1].split(",")[0]
+                    run += " (" + i + ", " + str(self.__transitions[int(index)]) + ") "
+
+            run += ">"
+            return run
+        except :
+            raise Exception("Cannot get run because model doesn't exist. See if SAT formula returns True.")
 
     def getTracesWithDistances(self):
         '''
-        NO DESCRIPTION FOR BAD METHODS
+        Returns a very simple string version of the traces with their distance to the run
         :return:
         '''
-        # TODO TRY/EXCEPT EVERYTHING HERE IS TO RE DO
         traces = ""
         for var in self.__model:
             if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
                     BOOLEAN_VAR_TRACES_ACTIONS):
-                index = self.__variables.getVarName(var).split("]")[0].split(",")[2]
+                transition = self.__variables.getVarName(var).split("]")[0].split(",")[2]
                 i = self.__variables.getVarName(var).split("[")[1].split(",")[1]
                 if int(i) == 1:
                     traces += "\n"
-                traces += " (" + i + ", " + str(self.__transitions[int(index)]) + "),"
-
-        if self.__distance_type == EDIT_DISTANCE:
-            for l in range(0, len(self.__traces)):
-                max = 0
-                for d in range(0, self.__max_d + 1):
-                    if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
-                                                     [l, self.__size_of_run, self.__size_of_run, d]) in self.__model:
-                        max = d
-                print(l, " :", max)
-        if self.__distance_type == HAMMING_DISTANCE:
-            for l in range(0, len(self.__traces)):
-                sum = 0
-                for i in range(1, self.__size_of_run + 1):
-                    if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [l, i]) in self.__model:
-                        sum += 1
-                print(l, " :", sum)
+                    lth_trace = self.__variables.getVarName(var).split("[")[1].split(",")[0]
+                    max_d_of_l = self.__getMaxDistanceOfTrace(int(lth_trace))
+                    traces+=str(lth_trace)+": [d="+str(max_d_of_l)+"]"
+                traces += " (" + i + ", " + str(self.__transitions[int(transition)]) + ")"
         return traces
+
+    def __getMaxDistanceOfTrace(self,l):
+        '''
+        Returns the maximal distance of the trace to the run
+        :param l (int) : lth trace
+        :return d (int)
+        '''
+        if self.__distance_type == EDIT_DISTANCE:
+            d = 0
+            for d in range(0, self.__max_d + 1):
+                if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
+                                                 [l, self.__size_of_run, self.__size_of_run, d]) in self.__model:
+                    d = d
+        if self.__distance_type == HAMMING_DISTANCE:
+            d = 0
+            for i in range(1, self.__size_of_run + 1):
+                if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE, [l, i]) in self.__model:
+                    d += 1
+        return d
