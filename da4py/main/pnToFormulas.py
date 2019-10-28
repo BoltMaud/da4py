@@ -84,7 +84,7 @@ def is_transition(places, transition, i, m_ip):
 
 
 def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip", label_t="tau_it",
-                     silent_transition="tau"):
+                     silent_transition=None):
     '''
     This function returns the SAT formulas of a petrinet given label of variables, size_of_run
     :param net: petri net of the librairie pm4py
@@ -101,6 +101,7 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     # we need a ordered list to get int per place/transition (for the variablesgenerator)
     transitions = [t for t in net.transitions]
     silent_transitions=[t for t in net.transitions if t.label==silent_transition]
+    print(silent_transitions)
     places = [p for p in net.places]
 
     # we create the number of variables needed for the markings
