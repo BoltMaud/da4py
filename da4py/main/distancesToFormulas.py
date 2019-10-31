@@ -26,9 +26,10 @@ Scientific paper : _Encoding Conformance Checking Artefacts in SAT_
 By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
-
+import numpy as np
 from threading import Thread
 from da4py.main.formulas import Or, And
+import itertools
 
 # our boolean formulas depends on variables, see our paper for more information
 BOOLEAN_VAR_MARKING_PN = "m_ip"
@@ -36,6 +37,7 @@ BOOLEAN_VAR_FIRING_TRANSITION_PN = "tau_it"
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 BOOLEAN_VAR_EDIT_DISTANCE = "djiid"
 BOOLEAN_VAR_HAMMING_DISTANCE="djd"
+BOOLEAN_VAR_HAMMING_SUP_AUX="supjd"
 
 # some little parallelism
 NB_MAX_THREADS = 50
@@ -45,6 +47,22 @@ MULTI_ALIGNMENT = "multi"
 ANTI_ALIGNMENT = "anti"
 EXACT_ALIGNMENT = "exact"
 
+def for_hamming_distance_aux_supd(variables,lenTraces,max_d,size_of_run):
+    list_of_formula=[]
+    list_to_size_of_run= list(range(1,size_of_run+1))
+    not_d_or_and_diff=[]
+    for j in range (0, lenTraces):
+        for d in range(1,min(max_d + 1,size_of_run+1)):
+            combinaisons_of_instants=list(itertools.combinations(list_to_size_of_run,d))
+            and_sub_instants=[]
+            for sub_list_of_instants in combinaisons_of_instants:
+                instants_to_combine=[]
+                for instant in list(sub_list_of_instants):
+                    instants_to_combine.append(variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,instant]))
+                and_sub_instants.append(And(instants_to_combine,[],[]))
+            not_d_or_and_diff.append(Or([],[variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])],and_sub_instants))
+    list_of_formula.append(And([],[],not_d_or_and_diff))
+    return list_of_formula
 
 def hamming_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, variables, nbTraces, size_of_run):
     '''
@@ -550,7 +568,6 @@ def recursionEditDistance_reducedForMultiAlignment(transitions, silent_transitio
                 formulas.append(finish_run_of_trace)
     return formulas
 
-
 # dictonary of functions used by the generic function edit_distance_per_trace_to_SAT()
 DICT_OF_EDIT_RECURSIONS = {MULTI_ALIGNMENT: recursionEditDistance_reducedForMultiAlignment,
                            ANTI_ALIGNMENT: recursionEditDistance__reducedForAntiAlignment,
@@ -558,3 +575,29 @@ DICT_OF_EDIT_RECURSIONS = {MULTI_ALIGNMENT: recursionEditDistance_reducedForMult
 DICT_OF_EDIT_INIT = {MULTI_ALIGNMENT: initialisation_ReducedForMultiAlignment,
                      ANTI_ALIGNMENT: initialisation_ReducedForAntiAlignment,
                      EXACT_ALIGNMENT: initialisation_ReducedForMultiAlignment}
+
+
+def levenshtein(s, t):
+    if len(s) == 0 :
+        return len(t)
+    if len(t) == 0 :
+        return len(s)
+    if s[-1] in ["tau","w",None]:
+        return levenshtein(s[:-1], t)
+    if t[-1] in ["tau","w",None] :
+        return levenshtein(s, t[:1])
+    if s[-1] == t[-1] :
+        return levenshtein(s[:-1], t[:-1])
+    else:
+        return min(levenshtein(s[:-1], t)+1,
+               levenshtein(s, t[:-1])+1)
+
+def hamming(s,t):
+    if len(s) == 0 :
+        return len(t.remove("w"))
+    if len(t) == 0 :
+        return len(s.remove("w"))
+    if s[0] == t[0] or s[0] in ["tau","w",None] or t[0] in ["tau","w",None] :
+        return hamming(s[1:], t[1:])
+    else:
+        return hamming(s[1:], t[1:])+1

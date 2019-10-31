@@ -21,14 +21,13 @@ Scientific paper : _Encoding Conformance Checking Artefacts in SAT_
 By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
-import itertools
 import time
-
+import pandas as pd
 from pm4py.objects.petri.petrinet import PetriNet
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
-
-from da4py.main.distancesToFormulas import hamming_distance_per_trace_to_SAT, edit_distance_per_trace_to_SAT
+from da4py.main.distancesToFormulas import hamming_distance_per_trace_to_SAT, edit_distance_per_trace_to_SAT, \
+    for_hamming_distance_aux_supd, levenshtein, hamming
 from da4py.main.formulas import And, Or
 from da4py.main.logToFormulas import log_to_SAT
 from da4py.main.pnToFormulas import petri_net_to_SAT
@@ -45,7 +44,7 @@ BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 BOOLEAN_VAR_EDIT_DISTANCE = "djiid"
 BOOLEAN_VAR_HAMMING_DISTANCE="djd"
 BOOLEAN_VAR_SUP = "supd"
-BOOLEAN_VAR_SUP_AUX = "supjd"
+BOOLEAN_VAR_HAMMING_SUP_AUX = "supjd"
 
 # SAT solver allows to add weights on clauses to reduce or maximize
 WEIGHT_ON_CLAUSES_TO_REDUCE = -10
@@ -80,7 +79,7 @@ class ConformanceArtefacts:
         self.__solver = solver
         self.__silent_label=SILENT_LABEL
         self.__max_nbTraces=None
-        self.__optimizeSup=True
+        self.__optimizeMin=True
 
     def multiAlignment(self, net, m0, mf, traces):
         '''
@@ -183,6 +182,7 @@ class ConformanceArtefacts:
         :param wait_transition: see add_wait_transition
         :return: formulas of the distance
         '''
+
         if self.__distance_type == HAMMING_DISTANCE:
             return hamming_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__variables, len(self.__traces),
                                                      self.__size_of_run)
@@ -202,7 +202,7 @@ class ConformanceArtefacts:
         :param artefactForMinimization: MULTI_ALIGNMENT or ANTI_ALIGNMENT or EXACT_ALIGNMENT
         :return:
         '''
-        formulas = initialisationFormulas + distanceFormula + self.__to_minimize(artefactForMinimization)
+        formulas = initialisationFormulas + distanceFormula + self.__sup_to_minimize(artefactForMinimization)
         full_formula = And([], [], formulas)
         cnf = full_formula.operatorToCnf(self.__variables.iterator)
         wcnf = WCNF()
@@ -213,8 +213,9 @@ class ConformanceArtefacts:
 
     def __createWeights(self,wcnf,artefactForMinimization):
         '''
-        Add weights on variables. Depend on OptimizeSup and distance_type. If optimizeSup is true, then we do real anti
-        alignment, otherwise we do MAX.
+        Add weights on variables. Depend on optimizeMin and distance_type. If optimizeMin is true, then we do real anti
+        alignment, otherwise we minimize/maximise the SUM of all the distances instead of the common minimal distance.
+        Exemple :
         :param wcnf: formula
         :param artefactForMinimization (string)
         :return:
@@ -222,12 +223,11 @@ class ConformanceArtefacts:
         # weights of variables depends on artefact
         weightsOnVariables = -1 if artefactForMinimization != ANTI_ALIGNMENT else 1
 
-        # real anti/multi
-        if self.__optimizeSup==True :
+        # MIN real anti/multi
+        if self.__optimizeMin==True :
             for d in range(0, self.__max_d ):
                 wcnf.append([weightsOnVariables * self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],WEIGHT_ON_CLAUSES_TO_REDUCE)
-
-        # MAX
+        # SUM
         else :
             if self.__distance_type == EDIT_DISTANCE:
                 for j in range(0, len(self.__traces)):
@@ -245,75 +245,193 @@ class ConformanceArtefacts:
                                     WEIGHT_ON_CLAUSES_TO_REDUCE)
         return wcnf
 
-    def setOptimizeSup(self,bool):
-        self.__optimizeSup=bool
+    def __solveWncf(self, wcnf):
+        '''
+        This method launches the SAT solver.
+        :param wcnf: formulas
+        :return:
+        '''
+        solver = RC2(wcnf, solver=self.__solver)
+        solver.compute()
+        end_solver = time.time()
+        self.__model = solver.model
+        self.__total_time=time.time()
 
-    def __to_minimize(self,artefact):
+    def getPrecision(self):
+        '''
+        Formula : 1 - (distance/max length)
+        :return (int)
+        '''
+        try :
+            for d in range (self.__max_d,-1,-1):
+                if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
+                    max_in_traces = len(max(self.__traces, key=len))
+                    max_in_model =  self.getRealSizeOfRun()
+                    return float(1)-float(d)/float(max(max_in_traces,max_in_model))
+        except:
+            raise Exception("Precision can only be computed with OptimizeSup to True.")
+
+    def getMinDistanceToRun(self):
+        '''
+        While artefact is computed, one may want to know what is the minimal distance of the run to the traces.
+        :return (int)
+        '''
+        if self.__optimizeMin:
+            for d in range (self.__max_d,-1,-1):
+                if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
+                    return d
+        else :
+            # subfunction to get the good variables.
+            if self.__distance_type=="hamming":
+                def functionDistance(j,d):
+                    return self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,d])
+            else:
+                def functionDistance(j,d):
+                    return self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,self.__size_of_run,self.__size_of_run,d])
+            # when one maximised the max, we check all the traces.
+            for d in range (0,self.__max_d):
+                    for j in range(0,len(self.__traces)):
+                        if functionDistance(j,d) not in self.__model:
+                            return d-1
+
+    def getRealSizeOfRun(self):
+        '''
+        As we complete run with "wait" transition, we need the real size of the run
+        :return:
+        '''
+        i_wait=self.__transitions.index(self.__wait_transition)
+        for i in range(self.__size_of_run,0,-1):
+            if self.__variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN,[i,i_wait]) not in self.__model:
+                return i
+
+    def getRun(self,debug=False):
+        '''
+        Returns a very simple string version of the multi or anti alignment
+        :param debug : to True return a string version with indices
+        :return (string) : output run
+        '''
+        try :
+            run = "<"
+            run_list=[]
+            for var in self.__model:
+                if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
+                        BOOLEAN_VAR_FIRING_TRANSITION_PN):
+                    index = self.__variables.getVarName(var).split("]")[0].split(",")[1]
+                    i = self.__variables.getVarName(var).split("[")[1].split(",")[0]
+                    run += " (" + i + ", " + str(self.__transitions[int(index)]) + ") "
+                    run_list.append(str(self.__transitions[int(index)]))
+            run += ">"
+            return run if debug else run_list
+        except :
+            raise Exception("Cannot get run because model doesn't exist. See if SAT formula returns True.")
+
+    def getTracesWithDistances(self):
+        '''
+        Returns a very simple string version of the traces with their distance to the run
+        :return:
+        '''
+        array_of_distance = [self.__getDistanceOfTrace(i) for i in range(0,len(self.__traces))]
+        return (pd.DataFrame({"distance" :array_of_distance,"traces": self.__traces}))
+
+    def __getDistanceOfTrace(self,l):
+        '''
+        Returns the maximal distance of the trace to the run
+        :param l (int) : lth trace
+        :return d (int)
+        '''
+        # only work for max because reducting formulas allows distance boolean variables to be True
+        if not self.__optimizeMin:
+            if self.__distance_type == EDIT_DISTANCE:
+                max_d = 0
+                for d in range(0, self.__max_d ):
+                    if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
+                                                     [l, self.__size_of_run, self.__size_of_run, d]) in self.__model:
+                        max_d = d
+            if self.__distance_type == HAMMING_DISTANCE:
+                max_d = 0
+                for i in range(1, self.__size_of_run + 1):
+                    if self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [l, i]) in self.__model:
+                        max_d += 1
+            print(max_d, levenshtein(self.getRun(),self.__traces[l]))
+            return max_d
+        else:
+            if self.__distance_type == EDIT_DISTANCE:
+                return levenshtein(self.getRun(),self.__traces[l])
+            else :
+                return hamming(self.getRun(),self.__traces[l])
+
+    def __sup_to_minimize(self,artefact):
         '''
         If we minimize SUP then we need to add some variables. Otherwise no.
         :param artefact:
         :return:
         '''
         # if we do max, then we don't have to add variables for distance
-        if self.__optimizeSup==False :
+        if self.__optimizeMin==False :
             return []
         else :
             # create new variables SUPD
             self.__variables.add(BOOLEAN_VAR_SUP,[(0,self.__max_d+1)])
-            list_of_formula=[]
+
             if self.__distance_type== EDIT_DISTANCE:
-                if artefact == ANTI_ALIGNMENT:
-                    for d in range (0, self.__max_d+1):
-                        list_of_d=[]
-                        for j in range(0, len(self.__traces)):
-                            # delta_j1nnd and delta_j2nnd and ... delta_jlnnd
-                            list_of_d.append(self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,self.__size_of_run,self.__size_of_run,d]))
-                        # not di or ( dji and dji ... dji)
-                        not_di_or_list_of_and=Or([],[self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],[
-                            And(list_of_d,[],[])])
-                        list_of_formula.append(not_di_or_list_of_and)
+                def variables_edit_distance(j,d):
+                    return self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,self.__size_of_run,self.__size_of_run,d])
+                return self.__sup_to_minimize_with_distance_function(artefact,variables_edit_distance)
 
-                if artefact == MULTI_ALIGNMENT :
-                    for d in range (0, self.__max_d + 1):
-                        list_of_d=[]
-                        for j in range(0, len(self.__traces)):
-                            # not delta_j1nnd or not delta_j2nnd or ... not delta_jlnnd
-                            list_of_d.append(self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,self.__size_of_run,self.__size_of_run,d]))
-                        #  di or ( dji or dji ... dji)
-                        not_di_or_list_of_and=Or([self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],list_of_d,[])
-                        list_of_formula.append(not_di_or_list_of_and)
-                return  list_of_formula
-            else :
-                # on crée les var SUP_AUX
-                self.__variables.add(BOOLEAN_VAR_SUP_AUX,[(0,len(self.__traces)),(0,self.__max_d+1)])
-                list_to_size_of_run= list(range(1,self.__size_of_run+1))
-                not_d_or_and_diff=[]
-                for j in range (0, len(self.__traces)):
-                    for d in range(1,min(self.__max_d + 1,self.__size_of_run+1)):
-                        combinaisons_of_instants=list(itertools.combinations(list_to_size_of_run,d))
-                        and_sub_instants=[]
-                        for sub_list_of_instants in combinaisons_of_instants:
-                            instants_to_combine=[]
-                            for instant in list(sub_list_of_instants):
-                                instants_to_combine.append(self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,instant]))
-                            and_sub_instants.append(And(instants_to_combine,[],[]))
-                        not_d_or_and_diff.append(Or([],[self.__variables.getVarNumber(BOOLEAN_VAR_SUP_AUX,[j,d])],and_sub_instants))
-                list_of_formula.append(And([],[],not_d_or_and_diff))
+            elif self.__distance_type==HAMMING_DISTANCE:
+                self.__variables.add(BOOLEAN_VAR_HAMMING_SUP_AUX,[(0,len(self.__traces)),(0,self.__max_d+1)])
+                def variables_edit_distance(j,d):
+                    return self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])
+                d_max_per_j = for_hamming_distance_aux_supd(self.__variables,len(self.__traces),self.__max_d,self.__size_of_run)
+                return d_max_per_j+ self.__sup_to_minimize_with_distance_function(artefact,variables_edit_distance)
 
-                for d in range (0, min(self.__max_d + 1,self.__size_of_run+1)):
-                    list_of_d=[]
-                    for j in range(0, len(self.__traces)):
-                        # delta_j1nnd and delta_j2nnd and ... delta_jlnnd
-                        list_of_d.append(self.__variables.getVarNumber(BOOLEAN_VAR_SUP_AUX,[j,d]))
-                    # not di or ( dji and dji ... dji)
-                    not_di_or_list_of_and=Or([],[self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],[
-                                                And(list_of_d,[],[])])
-                    list_of_formula.append(not_di_or_list_of_and)
-                neg_for_hamming=[]
-                for d in range (self.__size_of_run+1,self.__max_d + 1):
-                    neg_for_hamming.append(self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]))
-                list_of_formula.append(And([],neg_for_hamming,[]))
-                return list_of_formula
+    def __sup_to_minimize_with_distance_function(self,artefact,variablesFunction):
+        list_of_formula=[]
+        if artefact == ANTI_ALIGNMENT:
+            for d in range (0, self.__max_d+1):
+                list_of_d=[]
+                for j in range(0, len(self.__traces)):
+                    # delta_j1nnd and delta_j2nnd and ... delta_jlnnd
+                    list_of_d.append(variablesFunction(j,d))
+                # not di or ( dji and dji ... dji)
+                not_di_or_list_of_and=Or([],[self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],[
+                    And(list_of_d,[],[])])
+                list_of_formula.append(not_di_or_list_of_and)
+
+        if artefact == MULTI_ALIGNMENT :
+            for d in range (0, self.__max_d + 1):
+                list_of_d=[]
+                for j in range(0, len(self.__traces)):
+                    # not delta_j1nnd or not delta_j2nnd or ... not delta_jlnnd
+                    list_of_d.append(variablesFunction(j,d))
+                #  di or ( dji or dji ... dji)
+                not_di_or_list_of_and=Or([self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],list_of_d,[])
+                list_of_formula.append(not_di_or_list_of_and)
+        return  list_of_formula
+
+    def __add_wait_net(self):
+        '''
+        Words don't have the same length. To compare them we add a "wait" transition at the end of the model and the
+        traces.
+        :return:
+        '''
+        wait_transition = PetriNet.Transition(WAIT_TRANSITION, WAIT_TRANSITION)
+        for place in self.__net.places:
+            if len(place.out_arcs) == 0:
+                arcIn = PetriNet.Arc(place, wait_transition)
+                arcOut = PetriNet.Arc(wait_transition, place)
+                self.__net.arcs.add(arcIn)
+                self.__net.arcs.add(arcOut)
+                wait_transition.in_arcs.add(arcIn)
+                wait_transition.out_arcs.add(arcOut)
+                place.out_arcs.add(arcIn)
+                place.in_arcs.add(arcOut)
+        self.__net.transitions.add(wait_transition)
+        return wait_transition
+
+
+    def setOptimizeSup(self,bool):
+        self.__optimizeMin=bool
 
     def setSize_of_run(self,size):
         '''
@@ -353,7 +471,7 @@ class ConformanceArtefacts:
         self.__max_nbTraces=nb
 
     def setSilentLabel(self,label):
-            self.__silent_label=label
+        self.__silent_label=label
 
     def getSilentLabel(self):
         return self.__silent_label
@@ -368,109 +486,5 @@ class ConformanceArtefacts:
     def getTotalTime(self):
         return self.__total_time-self.__start_time
 
-    def __solveWncf(self, wcnf):
-        '''
-        This method launches the SAT solver.
-        :param wcnf: formulas
-        :return:
-        '''
-        solver = RC2(wcnf, solver=self.__solver)
-        solver.compute()
-        end_solver = time.time()
-        self.__model = solver.model
-        self.__total_time=time.time()
-
-    def __add_wait_net(self):
-        '''
-        Words don't have the same length. To compare them we add a "wait" transition at the end of the model and the
-        traces.
-        :return:
-        '''
-        wait_transition = PetriNet.Transition(WAIT_TRANSITION, WAIT_TRANSITION)
-        for place in self.__net.places:
-            if len(place.out_arcs) == 0:
-                arcIn = PetriNet.Arc(place, wait_transition)
-                arcOut = PetriNet.Arc(wait_transition, place)
-                self.__net.arcs.add(arcIn)
-                self.__net.arcs.add(arcOut)
-                wait_transition.in_arcs.add(arcIn)
-                wait_transition.out_arcs.add(arcOut)
-                place.out_arcs.add(arcIn)
-                place.in_arcs.add(arcOut)
-        self.__net.transitions.add(wait_transition)
-        return wait_transition
-
-    def getRun(self):
-        '''
-        Returns a very simple string version of the multi or anti alignment
-        :return (string) : output run
-        '''
-        try :
-            run = "<"
-            for var in self.__model:
-                if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
-                        BOOLEAN_VAR_FIRING_TRANSITION_PN):
-                    index = self.__variables.getVarName(var).split("]")[0].split(",")[1]
-                    i = self.__variables.getVarName(var).split("[")[1].split(",")[0]
-                    run += " (" + i + ", " + str(self.__transitions[int(index)]) + ") "
-
-            run += ">"
-            return run
-        except :
-            raise Exception("Cannot get run because model doesn't exist. See if SAT formula returns True.")
-
-    def getTracesWithDistances(self):
-        '''
-        Returns a very simple string version of the traces with their distance to the run
-        :return:
-        '''
-        traces = ""
-        for var in self.__model:
-            if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
-                    BOOLEAN_VAR_TRACES_ACTIONS):
-                transition = self.__variables.getVarName(var).split("]")[0].split(",")[2]
-                i = self.__variables.getVarName(var).split("[")[1].split(",")[1]
-                if int(i) == 1:
-                    traces += "\n"
-                    lth_trace = self.__variables.getVarName(var).split("[")[1].split(",")[0]
-                    max_d_of_l = self.__getMaxDistanceOfTrace(int(lth_trace))
-                    traces+=str(lth_trace)+": [d="+str(max_d_of_l)+"]"
-                traces += " (" + i + ", " + str(self.__transitions[int(transition)]) + ")"
-        return traces
-
-    def __getMaxDistanceOfTrace(self,l):
-        '''
-        Returns the maximal distance of the trace to the run
-        :param l (int) : lth trace
-        :return d (int)
-        '''
-        if self.__distance_type == EDIT_DISTANCE:
-            max_d = 0
-            for d in range(0, self.__max_d ):
-                if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
-                                                 [l, self.__size_of_run, self.__size_of_run, d]) in self.__model:
-                    max_d = d
-        if self.__distance_type == HAMMING_DISTANCE:
-            max_d = 0
-            for i in range(1, self.__size_of_run + 1):
-                if self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [l, i]) in self.__model:
-                    max_d += 1
-        return max_d
-
-    def getPrecision(self):
-        # TODO ONLY FOR EDIT
-        max_d=0
-        for d in range (self.__max_d,-1,-1):
-            if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
-                max_d=d
-                max_in_traces = len(max(self.__traces, key=len))
-                max_in_model =  self.getRealSizeOfRun()
-                max_len = max(max_in_traces,max_in_model)
-                print(max_d)
-                return float(1)-float(max_d)/float(max_len)
-
-    def getRealSizeOfRun(self):
-        i_wait=self.__transitions.index(self.__wait_transition)
-        for i in range(self.__size_of_run,0,-1):
-            if self.__variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN,[i,i_wait]) not in self.__model:
-                return i
+    def getSizeOfLog(self):
+        return len(self.__traces)
