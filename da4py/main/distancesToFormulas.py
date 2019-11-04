@@ -36,7 +36,7 @@ BOOLEAN_VAR_MARKING_PN = "m_ip"
 BOOLEAN_VAR_FIRING_TRANSITION_PN = "tau_it"
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 BOOLEAN_VAR_EDIT_DISTANCE = "djiid"
-BOOLEAN_VAR_HAMMING_DISTANCE="djd"
+BOOLEAN_VAR_HAMMING_DISTANCE="dji"
 BOOLEAN_VAR_HAMMING_SUP_AUX="supjd"
 
 # some little parallelism
@@ -594,9 +594,11 @@ def levenshtein(s, t):
 
 def hamming(s,t):
     if len(s) == 0 :
-        return len(t.remove("w"))
+        while "w" in t: t.remove("w")
+        return len(t)
     if len(t) == 0 :
-        return len(s.remove("w"))
+        while "w" in s: s.remove("w")
+        return len(s)
     if s[0] == t[0] or s[0] in ["tau","w",None] or t[0] in ["tau","w",None] :
         return hamming(s[1:], t[1:])
     else:

@@ -42,7 +42,7 @@ BOOLEAN_VAR_MARKING_PN = "m_ip"
 BOOLEAN_VAR_FIRING_TRANSITION_PN = "tau_it"
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 BOOLEAN_VAR_EDIT_DISTANCE = "djiid"
-BOOLEAN_VAR_HAMMING_DISTANCE="djd"
+BOOLEAN_VAR_HAMMING_DISTANCE="dji"
 BOOLEAN_VAR_SUP = "supd"
 BOOLEAN_VAR_HAMMING_SUP_AUX = "supjd"
 
@@ -263,11 +263,20 @@ class ConformanceArtefacts:
         :return (int)
         '''
         try :
-            for d in range (self.__max_d,-1,-1):
-                if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
-                    max_in_traces = len(max(self.__traces, key=len))
-                    max_in_model =  self.getRealSizeOfRun()
-                    return float(1)-float(d)/float(max(max_in_traces,max_in_model))
+            if self.__distance_type==EDIT_DISTANCE:
+                for d in range (self.__max_d,-1,-1):
+                    if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
+                        max_in_traces = len(max(self.__traces, key=len))
+                        max_in_model =  self.getRealSizeOfRun()
+                        print(d,max_in_traces,max_in_model)
+                        return float(1)-float(d)/float(max(max_in_traces,max_in_model)*(self.__max_d/self.__size_of_run))
+            if self.__distance_type==HAMMING_DISTANCE:
+                for d in range (self.__size_of_run,-1,-1):
+                    if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
+                        max_in_traces = len(max(self.__traces, key=len))
+                        max_in_model =  self.getRealSizeOfRun()
+                        print(d,max_in_traces,max_in_model)
+                        return float(1)-float(d)/float(max(max_in_traces,max_in_model))
         except:
             raise Exception("Precision can only be computed with OptimizeSup to True.")
 
@@ -352,7 +361,7 @@ class ConformanceArtefacts:
                 for i in range(1, self.__size_of_run + 1):
                     if self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [l, i]) in self.__model:
                         max_d += 1
-            print(max_d, levenshtein(self.getRun(),self.__traces[l]))
+            print(max_d, hamming(self.getRun(),self.__traces[l]))
             return max_d
         else:
             if self.__distance_type == EDIT_DISTANCE:
