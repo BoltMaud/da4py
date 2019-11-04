@@ -535,10 +535,9 @@ def recursionEditDistance_reducedForMultiAlignment(transitions, silent_transitio
     for i_m in range(0, size_of_run):
         for i_t in range(0, size_of_run):
             for d in range(0, max_d):
-                # letters are equals or i_m == "tau" : i_t+1 == i_m+1 => (d i_t i_m d => d i_t+1 i_m+1 d)
-                condition = [tau_it([i_m + 1, t(st)]) for st in silent_transitions]
-                letters_are_equals = Or([djiid([j, i_m + 1, i_t + 1, d])], [djiid([j, i_m, i_t, d])],
-                                        [And([], condition,
+                # letters are equals i_t+1 == i_m+1 => (d i_t i_m d => d i_t+1 i_m+1 d)
+                letters_are_equals = Or([djiid([j, i_m + 1, i_t + 1, d+1])], [djiid([j, i_m, i_t, d+1])],
+                                        [And([], [],
                                              [Or([], [tau_it([i_m + 1, t]), lambda_jia([j, i_t + 1, t])], []) for t in
                                               range(0, len(transitions))]
                                              )])
@@ -562,9 +561,14 @@ def recursionEditDistance_reducedForMultiAlignment(transitions, silent_transitio
                 formulas.append(finish_run_of_model)
 
                 # ( u_m == w and u_t <> w) => ( d i_m i_t d => d i_m i_t+1 d
+                condition=[tau_it([i_m + 1, t(wait_transition)])]
+                for st in silent_transitions:
+                    condition.append(tau_it([i_m + 1, t(st)]))
                 finish_run_of_trace = Or(
                     [lambda_jia([j, i_t + 1, t(wait_transition)]), djiid([j, i_m + 1, i_t + 1, d])],
-                    [tau_it([i_m + 1, t(wait_transition)]), djiid([j, i_m, i_t + 1, d])], [])
+                    [ djiid([j, i_m, i_t + 1, d])], [
+                        And([], condition,[])
+                    ])
                 formulas.append(finish_run_of_trace)
     return formulas
 

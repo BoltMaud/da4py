@@ -356,12 +356,12 @@ class ConformanceArtefacts:
                     if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
                                                      [l, self.__size_of_run, self.__size_of_run, d]) in self.__model:
                         max_d = d
+
             if self.__distance_type == HAMMING_DISTANCE:
                 max_d = 0
                 for i in range(1, self.__size_of_run + 1):
                     if self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [l, i]) in self.__model:
                         max_d += 1
-            print(max_d, hamming(self.getRun(),self.__traces[l]))
             return max_d
         else:
             if self.__distance_type == EDIT_DISTANCE:
@@ -414,7 +414,7 @@ class ConformanceArtefacts:
                     # not delta_j1nnd or not delta_j2nnd or ... not delta_jlnnd
                     list_of_d.append(variablesFunction(j,d))
                 #  di or ( dji or dji ... dji)
-                not_di_or_list_of_and=Or([self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],list_of_d,[])
+                not_di_or_list_of_and=Or([self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],[],[And([],list_of_d,[])])
                 list_of_formula.append(not_di_or_list_of_and)
         return  list_of_formula
 
