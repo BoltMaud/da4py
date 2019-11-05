@@ -60,7 +60,7 @@ Two types of distances are available :
 ```python
 artefacts.setDistance_type("edit")
 ```
-Then an anti-alignment can be find by running : 
+Then an anti-alignment can be found by running : 
 ```python
 artefacts.antiAlignment(model,m0,mf,traces)
 print(artefacts.getRun())
