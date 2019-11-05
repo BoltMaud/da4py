@@ -47,7 +47,13 @@ MULTI_ALIGNMENT = "multi"
 ANTI_ALIGNMENT = "anti"
 EXACT_ALIGNMENT = "exact"
 
-def for_hamming_distance_aux_supd(variables,lenTraces,max_d,size_of_run):
+def for_hamming_distance_aux_supd(artefact,variables,lenTraces,max_d,size_of_run):
+    if artefact==MULTI_ALIGNMENT:
+        return for_hamming_distance_aux_supd_multi(variables,lenTraces,max_d,size_of_run)
+    else:
+        return for_hamming_distance_aux_supd_anti(variables,lenTraces,max_d,size_of_run)
+
+def for_hamming_distance_aux_supd_anti(variables,lenTraces,max_d,size_of_run):
     list_of_formula=[]
     list_to_size_of_run= list(range(1,size_of_run+1))
     not_d_or_and_diff=[]
@@ -61,6 +67,23 @@ def for_hamming_distance_aux_supd(variables,lenTraces,max_d,size_of_run):
                     instants_to_combine.append(variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,instant]))
                 and_sub_instants.append(And(instants_to_combine,[],[]))
             not_d_or_and_diff.append(Or([],[variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])],and_sub_instants))
+    list_of_formula.append(And([],[],not_d_or_and_diff))
+    return list_of_formula
+
+def for_hamming_distance_aux_supd_multi(variables,lenTraces,max_d,size_of_run):
+    list_of_formula=[]
+    list_to_size_of_run= list(range(1,size_of_run+1))
+    not_d_or_and_diff=[]
+    for j in range (0, lenTraces):
+        for d in range(1,min(max_d + 1,size_of_run+1)):
+            combinaisons_of_instants=list(itertools.combinations(list_to_size_of_run,d))
+            and_sub_instants=[]
+            for sub_list_of_instants in combinaisons_of_instants:
+                instants_to_combine=[]
+                for instant in list(sub_list_of_instants):
+                    instants_to_combine.append(variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,instant]))
+                and_sub_instants.append(Or([],instants_to_combine,[]))
+            not_d_or_and_diff.append(Or([variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])],[],[And([],[],and_sub_instants)]))
     list_of_formula.append(And([],[],not_d_or_and_diff))
     return list_of_formula
 

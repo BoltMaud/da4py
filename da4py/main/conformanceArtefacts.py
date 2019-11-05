@@ -266,17 +266,13 @@ class ConformanceArtefacts:
             if self.__distance_type==EDIT_DISTANCE:
                 for d in range (self.__max_d,-1,-1):
                     if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
-                        max_in_traces = len(max(self.__traces, key=len))
-                        max_in_model =  self.getRealSizeOfRun()
-                        print(d,max_in_traces,max_in_model)
-                        return float(1)-float(d)/float(max(max_in_traces,max_in_model)*(self.__max_d/self.__size_of_run))
+                        print(d, self.__max_d)
+                        return float(1)-float(d)/float(self.__max_d)
             if self.__distance_type==HAMMING_DISTANCE:
                 for d in range (self.__size_of_run,-1,-1):
                     if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
-                        max_in_traces = len(max(self.__traces, key=len))
-                        max_in_model =  self.getRealSizeOfRun()
-                        print(d,max_in_traces,max_in_model)
-                        return float(1)-float(d)/float(max(max_in_traces,max_in_model))
+                        print(d, self.__max_d)
+                        return float(1)-float(d)/float(self.__max_d)
         except:
             raise Exception("Precision can only be computed with OptimizeSup to True.")
 
@@ -391,7 +387,7 @@ class ConformanceArtefacts:
                 self.__variables.add(BOOLEAN_VAR_HAMMING_SUP_AUX,[(0,len(self.__traces)),(0,self.__max_d+1)])
                 def variables_edit_distance(j,d):
                     return self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])
-                d_max_per_j = for_hamming_distance_aux_supd(self.__variables,len(self.__traces),self.__max_d,self.__size_of_run)
+                d_max_per_j = for_hamming_distance_aux_supd(artefact,self.__variables,len(self.__traces),self.__max_d,self.__size_of_run)
                 return d_max_per_j+ self.__sup_to_minimize_with_distance_function(artefact,variables_edit_distance)
 
     def __sup_to_minimize_with_distance_function(self,artefact,variablesFunction):

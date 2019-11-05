@@ -13,7 +13,7 @@ traces="/Users/mboltenhagen/Documents/PhD/Josep&Thomas/markovian-accuracy/artifi
 net, m0, mf = importer.pnml.import_net(model)
 log = xes_importer.import_log(traces)
 
-'''
+
 vizu.apply(net,m0,mf).view()
 artefacts= ConformanceArtefacts()
 artefacts.setSilentLabel("tau")
@@ -22,26 +22,27 @@ artefacts.setSize_of_run(10)
 artefacts.setMax_d(20)
 # do some antiAlingment
 artefacts.antiAlignment(net,m0,mf,log)
-print("ANTI - HAMMING")
-print(artefacts.getRun())
+print("ANTI - EDIT")
+print(artefacts.getRun(True))
 print(artefacts.getTracesWithDistances())
 print(artefacts.getPrecision())
 '''
 
 artefacts= ConformanceArtefacts()
 artefacts.setSilentLabel("tau")
-artefacts.setDistance_type("hamming")
-artefacts.setOptimizeSup(True)
+artefacts.setDistance_type("edit")
+artefacts.setOptimizeSup(False)
 artefacts.setSize_of_run(10)
 artefacts.setMax_d(20)
 # do some antiAlingment
 artefacts.multiAlignment(net,m0,mf,log)
 print("MULTI - EDIT")
 print(artefacts.getRun())
+print(artefacts.getMinDistanceToRun())
 print(artefacts.getTracesWithDistances())
 #print(artefacts.getPrecision())
 
-'''
+
 net, m0, mf = importer.pnml.import_net(model)
 log = xes_importer.import_log(traces)
 artefacts= ConformanceArtefacts()

@@ -50,7 +50,10 @@ def is_action(places, transitions, m0, i, m_ip, tau_it):
     :return:
     '''
     # only one transition is true at instant i
-    formulas = [Or([tau_it([i, transitions.index(t)]) for t in transitions], [], [])]
+    or_formulas = []
+    for t in transitions:
+        or_formulas.append(And([tau_it([i, transitions.index(t)])],[tau_it([i, transitions.index(t2)]) for t2 in transitions if t != t2],[]))
+    formulas=[Or([],[],or_formulas)]
     # if transition t fires at instant i, then we have the good marking
     for t in transitions:
         formulas.append(Or([], [tau_it([i, transitions.index(t)])], [is_transition(places, t, i, m_ip)]))

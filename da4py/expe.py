@@ -6,13 +6,13 @@ from pm4py.objects.petri import importer
 from pm4py.objects.log.importer.xes import factory as xes_importer
 from pm4py.visualization.petrinet import factory as vizu
 
-outPutFileName="AA_artificialLog.csv"
-for number in [1,2,3,4,5,6,7,8,12]:
+outPutFileName="AA_artificialLog_2.csv"
+for number in [1,2,3,4,5,6,7,8,12,13]:
     for distance in ["hamming","edit"]:
-        model="artificial-logs-models/"+dir+"/"+str(number)+".pnml"
+        model="artificial-logs-models/fig"+str(number)+".pnml"
         traces="artificial-logs-models/accepting-pns/artificial.xes"
-        for run in [10,15]:
-            for max_d in [15]:
+        for run in [10]:
+            for max_d in [20]:
                 net, m0, mf = importer.pnml.import_net(model)
                 log = xes_importer.import_log(traces)
                 artefacts= ConformanceArtefacts()
@@ -31,7 +31,6 @@ for number in [1,2,3,4,5,6,7,8,12]:
                 outPutFile.write(str(artefacts.getPrecision())+";")
                 outPutFile.write(str(artefacts.getTotalTime())+";"+str(formulas.NB_VARS)+";")
                 outPutFile.write(artefacts.getRun()+";")
-                outPutFile.write(artefacts.getDistanceOfAnti()+"\n")
                 outPutFile.close()
 
 
