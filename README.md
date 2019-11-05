@@ -18,9 +18,15 @@ The project is a translation of the Ocaml version `darksider` created by Thomas 
 
 - (Ocaml version exists) _Generalized Alignment-Based Trace Clustering of Process Behavior_ by Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
  
-## ENVIRONNEMENT
+## ENVIRONNEMENT & INSTALLATION
 
  `python 3.7.x `
+ 
+ Simply run : 
+ `pip install da4py`
+ 
+ (https://pypi.org/project/da4py/0.0.1/)
+
  
 ## USAGE
 
