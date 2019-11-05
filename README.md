@@ -1,4 +1,4 @@
->Author : Boltenhagen Mathilde<br>
+>Author : Boltenhagen Mathilde with Thomas Chatain and Josep Carmona<br>
 >Date : 09.2019<br>
     
 ## INTRODUCTION 
