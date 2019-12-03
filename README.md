@@ -3,8 +3,8 @@
     
 ## INTRODUCTION 
 
-This project implements **Process Mining** algorithms with  _SAT encodings_ to get optimal results in case of verification problems.
-Boolean formulas are first created, then converted to CNF and solved with SAT solvers, thanks to  `pysat`.
+This project implements **Process Mining** algorithms with  _SAT encodings_ to get optimal results for verification problems.
+Boolean formulas are first created, then converted into CNF form and solved with SAT solvers, thanks to  `pysat`.
 This librairy used `pm4py` Objects. 
 
 The project is a translation of the Ocaml version `darksider` created by Thomas Chatain and Mathilde Boltenhagen. 
@@ -30,7 +30,7 @@ The project is a translation of the Ocaml version `darksider` created by Thomas 
  
 ## USAGE
 
-The librairie uses pm4py. 
+The librairy uses pm4py. 
 
 ```python
 pm4py.objects.petri import importer
