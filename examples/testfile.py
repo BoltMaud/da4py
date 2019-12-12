@@ -1,11 +1,9 @@
 import sys
 
-from da4py.main import formulas
+from da4py.main.utils import formulas
 from da4py.main.conformanceArtefacts import ConformanceArtefacts
 from pm4py.objects.petri import importer
 from pm4py.objects.log.importer.xes import factory as xes_importer
-from pm4py.visualization.petrinet import factory as vizu
-
 
 # USE : python3 testfile.py model log size_of_run max_d distance out_putfile
 
@@ -26,7 +24,7 @@ artefacts.setDistance_type(sys.argv[5])
 artefacts.antiAlignment(net,m0,mf,log)
 
 file = open(sys.argv[6],"w")
-file.write(sys.argv[1]+";"+sys.argv[2]+";"+sys.argv[3]+";"+sys.argv[4]+";"+sys.argv[5]+";"+formulas.NB_VARS+";"+
-           artefacts.getForumulaTime()+";"+artefacts.getTotalTime()+";"+artefacts.getRun())
+file.write(sys.argv[1] +";" + sys.argv[2] +";" + sys.argv[3] +";" + sys.argv[4] +";" + sys.argv[5] +";" + formulas.NB_VARS + ";" +
+           artefacts.getForumulaTime() +";" + artefacts.getTotalTime() +";" + artefacts.getRun())
 
 

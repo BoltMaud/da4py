@@ -26,9 +26,8 @@ Scientific paper : _Encoding Conformance Checking Artefacts in SAT_
 By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
-import numpy as np
 from threading import Thread
-from da4py.main.formulas import Or, And
+from da4py.main.utils.formulas import Or, And
 import itertools
 
 # our boolean formulas depends on variables, see our paper for more information

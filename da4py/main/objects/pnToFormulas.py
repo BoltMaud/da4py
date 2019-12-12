@@ -18,9 +18,9 @@ Scientific paper : _Alignment-based trace clustering_
 
 '''
 
-from da4py.main.formulas import Or, And
+from da4py.main.utils.formulas import Or, And
 
-def is_run(size_of_run, places, transitions, m0, m_ip, tau_it):
+def is_run(size_of_run, places, transitions, m0, mf, m_ip, tau_it,reach_final):
     '''
     The is_run method allows one to create the boolean paths of the petri net.
     :param size_of_run (int): maximal size of the run
@@ -29,9 +29,12 @@ def is_run(size_of_run, places, transitions, m0, m_ip, tau_it):
     :param m0 (marking) : initial marking
     :param m_ip (marking) : final marking
     :param tau_it (function) : function to get the number of the boolean variables, see variablesGenerator.
+    :param reach_final (bool) : true or false to reach final marking
     :return:
     '''
     positives = [m_ip([0, places.index(m)]) for m in m0]
+    if reach_final:
+        [positives.append(m_ip(size_of_run,places.index(m))) for m in mf]
     negatives = [m_ip([0, places.index(m)]) for m in places if m not in m0]
     formulas = [is_action(places, transitions, m0, i, m_ip, tau_it) for i in range(1, size_of_run + 1)]
     run_of_pn = And(positives, negatives, formulas)
@@ -86,7 +89,7 @@ def is_transition(places, transition, i, m_ip):
     return And([], [], formulas)
 
 
-def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip", label_t="tau_it",
+def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, reach_final, label_m="m_ip", label_t="tau_it",
                      silent_transition=None):
     '''
     This function returns the SAT formulas of a petrinet given label of variables, size_of_run
@@ -97,6 +100,7 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     :param label_m (string) : name of marking boolean variables per instant i and place p
     :param label_t (string) : name of place boolean variables per instant i and transition t
     :param size_of_run (int) : max instant i
+    :param reach_final (bool) : True for reaching final marking
     :param sigma (list of char) : transition name
     :return: a boolean formulas
     '''
@@ -112,5 +116,5 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, label_m="m_ip
     # we create the number of variables needed for the transitions
     variablesGenerator.add(label_t, [(1, size_of_run + 1), (0, len(transitions))])
 
-    return (is_run(size_of_run, places, transitions, m0, variablesGenerator.getfunction(label_m),
-                   variablesGenerator.getfunction(label_t)), places, transitions,silent_transitions)
+    return (is_run(size_of_run, places, transitions, m0, mf, variablesGenerator.getfunction(label_m),
+                   variablesGenerator.getfunction(label_t), reach_final), places, transitions,silent_transitions)

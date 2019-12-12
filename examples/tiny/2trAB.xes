@@ -20,8 +20,8 @@
 			<date key="time:timestamp" value="2000-01-01T01:00:00.000+01:00"/>
 		</event>
 		<event>
-			<string key="concept:instance" value="B"/>
-			<string key="concept:name" value="B"/>
+			<string key="concept:instance" value="A"/>
+			<string key="concept:name" value="A"/>
 			<string key="lifecycle:transition" value="complete"/>
 			<date key="time:timestamp" value="2000-01-01T01:00:01.000+01:00"/>
 		</event>
@@ -29,14 +29,14 @@
 	<trace>
 		<string key="concept:name" value="trace1"/>
 		<event>
-			<string key="concept:instance" value="A"/>
-			<string key="concept:name" value="A"/>
+			<string key="concept:instance" value="C"/>
+			<string key="concept:name" value="C"/>
 			<string key="lifecycle:transition" value="complete"/>
 			<date key="time:timestamp" value="2000-01-01T01:00:02.000+01:00"/>
 		</event>
 		<event>
-			<string key="concept:instance" value="C"/>
-			<string key="concept:name" value="C"/>
+			<string key="concept:instance" value="A"/>
+			<string key="concept:name" value="A"/>
 			<string key="lifecycle:transition" value="complete"/>
 			<date key="time:timestamp" value="2000-01-01T01:00:03.000+01:00"/>
 		</event>

@@ -26,12 +26,12 @@ import pandas as pd
 from pm4py.objects.petri.petrinet import PetriNet
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
-from da4py.main.distancesToFormulas import hamming_distance_per_trace_to_SAT, edit_distance_per_trace_to_SAT, \
+from da4py.main.conformanceChecking.distancesToFormulas import hamming_distance_per_trace_to_SAT, edit_distance_per_trace_to_SAT, \
     for_hamming_distance_aux_supd, levenshtein, hamming
-from da4py.main.formulas import And, Or
-from da4py.main.logToFormulas import log_to_SAT
-from da4py.main.pnToFormulas import petri_net_to_SAT
-from da4py.main import variablesGenerator as vg
+from da4py.main.utils.formulas import And, Or
+from da4py.main.objects.logToFormulas import log_to_SAT
+from da4py.main.objects.pnToFormulas import petri_net_to_SAT
+from da4py.main.utils import variablesGenerator as vg
 
 # a wait transition is added to complete words, :see __add_wait_net()
 WAIT_TRANSITION = "w"
@@ -80,6 +80,7 @@ class ConformanceArtefacts:
         self.__silent_label=SILENT_LABEL
         self.__max_nbTraces=None
         self.__optimizeMin=True
+        self.__reachFinal=False
 
     def multiAlignment(self, net, m0, mf, traces):
         '''
@@ -167,6 +168,7 @@ class ConformanceArtefacts:
         # the model is translated to a formula
         pn_formula, places, self.__transitions, self.__silent_transitions = petri_net_to_SAT(self.__net, m0, mf, self.__variables,
                                                                   self.__size_of_run,
+                                                                  self.__reachFinal,
                                                                   label_m=BOOLEAN_VAR_MARKING_PN,
                                                                   label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN,
                                                                    silent_transition=self.__silent_label)
@@ -337,6 +339,14 @@ class ConformanceArtefacts:
         '''
         array_of_distance = [self.__getDistanceOfTrace(i) for i in range(0,len(self.__traces))]
         return (pd.DataFrame({"distance" :array_of_distance,"traces": self.__traces}))
+
+    def fullRunOnly(self,bool=False):
+        '''
+        This function implies to choose to reach or not the final marking
+        :param bool: reach final or not
+        :return: void
+        '''
+        self.__reachFinal=bool
 
     def __getDistanceOfTrace(self,l):
         '''
