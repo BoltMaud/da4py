@@ -168,4 +168,4 @@ class VariablesGenerator:
                         div *= (self.set[key].listOfBoundaries[j][1] - self.set[key].listOfBoundaries[j][0])
                     list_of_indexes.append(str(number // div + self.set[key].listOfBoundaries[i][0]))
                     number = number % div
-                return key + " [" + ', '.join(list_of_indexes) + ", " + str(number) + "]"
+                return key + " [" + ', '.join(list_of_indexes) + ", " + str(number+self.set[key].listOfBoundaries[-1][0]) + "]"

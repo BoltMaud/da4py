@@ -39,7 +39,9 @@ def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_tr
     :return:
     '''
     traces_multiples = project_traces(traces_xes)
+    print("traces m",traces_multiples)
     traces=list(np.unique(traces_multiples))
+    print("uniques",traces)
     traces = traces[:max_nbTraces] if max_nbTraces!=None else traces
     variablesGenerator.add(label_l,[(0,len(traces)),(1,size_of_run+1),(0,len(transitions))])
     lambda_jia=variablesGenerator.getfunction(label_l)
@@ -112,16 +114,10 @@ def log_to_Petri_with_w(traces_xes, ttransitions, variablesGenerator, size_of_ru
                 or_formulas.append(And([tau_it([j,i, index_of_t])],[],[]))
                 implication=[]
                 for t2 in other_transitions_with_same_label:
-                    print("------")
-                    print(is_transition_for_j(j,places, t2, i, m_ip).__repr__(variablesGenerator))
-                    print("------")
                     implication.append(is_transition_for_j(j,places, t2, i, m_ip))
                 formulas.append(Or([], [tau_it([j,i, index_of_t])], implication))
-                print("voil pour ",t.label, other_transitions_with_same_label, Or([], [tau_it([j,i, index_of_t])], implication).__repr__(variablesGenerator))
         formulas.append(Or([],[],or_formulas))
         formulas.append(And([],[tau_it([j,i, transitions.index(r)]) for r in copie_transitions],[]))
-        print(transitions)
-        print(And([], [], formulas).__repr__(variablesGenerator))
         return And([], [], formulas)
 
 
