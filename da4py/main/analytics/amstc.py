@@ -22,6 +22,9 @@ By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
 import time
+
+from pm4py.objects import petri
+
 from da4py.main.utils.variablesGenerator import VariablesGenerator
 from pm4py.objects.petri.petrinet import PetriNet
 from pysat.examples.rc2 import RC2
@@ -46,7 +49,7 @@ WAIT_LABEL_MODEL="ww"
 
 class Amstc:
 
-    def __init__(self, pn, m0, mf, traces_xes, size_of_run, max_d, max_t, nb_clusters):
+    def __init__(self, pn, m0, mf, traces_xes, size_of_run, max_d, max_t, nb_clusters,silent_label=None):
         self.__max_d=max_d
         self.__max_t=max_t
         self.__size_of_run=size_of_run
@@ -54,7 +57,10 @@ class Amstc:
         self.__places=list(pn.places)
         self.__wait_transition_trace=PetriNet.Transition(WAIT_LABEL_TRACE, WAIT_LABEL_TRACE)
         self.__wait_transition_model=PetriNet.Transition(WAIT_LABEL_MODEL, WAIT_LABEL_MODEL)
-
+        final_places=[p for p in pn.places if p in mf]
+        petri.utils.add_arc_from_to(self.__wait_transition_model, final_places[0], pn)
+        petri.utils.add_arc_from_to(final_places[0],self.__wait_transition_model, pn)
+        self.__silent_transititons=[t for t in self.__transitions if t.label==silent_label]
         self.__transitions.append(self.__wait_transition_trace)
         self.__transitions.append(self.__wait_transition_model)
 
@@ -153,11 +159,15 @@ class Amstc:
         self.__variablesGenerator.add(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[(0,len(self.__traces)),(1,self.__size_of_run+1)])
         listOfAnd=[]
         listOfOr=[]
-        indexOfWait=self.__transitions.index(self.__wait_transition_trace)
         for j in range (0, len(self.__traces)):
             for i in range(1,self.__size_of_run+1):
                 for t in range(0,len(self.__transitions)):
-                    diffjit=Or([self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i]),
+                    if self.__transitions[t] in self.__silent_transititons:
+                        diffjit=Or([],
+                                   [self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_CHI_TRANSITIONS,[j,i,t]),
+                                    self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i])],[])
+                    else :
+                        diffjit=Or([self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i]),
                                     self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[j,i,t])],
                                    [self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_CHI_TRANSITIONS,[j,i,t])],[])
                     listOfOr.append(diffjit)
@@ -203,7 +213,9 @@ class Amstc:
 
     def __minimizingCommonTransitions(self,max_t):
         for k1 in range (0,self.__nb_clusters):
-            self.__wcnf.append([[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRANSITION_IN_K,[k1,t]) for t in range (0,len(self.__transitions))],max_t],is_atmost=True)
+            self.__wcnf.append([[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRANSITION_IN_K,[k1,t])
+                                 for t in range (0,len(self.__transitions))
+                                 if self.__transitions[t]!=self.__wait_transition_model],max_t],is_atmost=True)
             for transition in self.__transitions:
                 t=self.__transitions.index(transition)
                 #self.__wcnf.append([-1*self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRANSITION_IN_K,[k1,t])],1)
