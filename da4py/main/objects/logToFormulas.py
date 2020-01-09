@@ -147,6 +147,7 @@ def log_to_Petri_with_w(traces_xes, ttransitions, variablesGenerator, size_of_ru
 
     traces_multiples = project_traces(traces_xes)
     traces=list(traces_multiples)
+    print("he ouie",len(traces))
     traces = traces[:max_nbTraces] if max_nbTraces!=None else traces
     variablesGenerator.add(label_l,[(0,len(traces)),(1,size_of_run+1),(0,len(ttransitions))])
     variablesGenerator.add(label_m,[(0,len(traces)),(0,size_of_run+1),(0,len(ttransitions))])

@@ -90,6 +90,7 @@ class Amstc:
         print(self.__wcnf.atms)
         solver = RC2(self.__wcnf, solver="mc")
         solver.compute()
+        print(time.time()-self.__start)
         self.__model = solver.model
 
     def __createCentroids(self,m0):
