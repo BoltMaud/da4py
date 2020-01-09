@@ -22,13 +22,15 @@ By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
 import time
+import itertools
+
 
 from pm4py.objects import petri
 
 from da4py.main.utils.variablesGenerator import VariablesGenerator
 from pm4py.objects.petri.petrinet import PetriNet
 from pysat.examples.rc2 import RC2
-from pysat.formula import WCNFPlus
+from pysat.formula import WCNF
 
 from da4py.main.objects.logToFormulas import log_to_Petri_with_w
 from da4py.main.objects.pnToFormulas import is_transition
@@ -78,17 +80,17 @@ class Amstc:
         centroidsFormulasList = self.__createCentroids(m0)
         diffTracesCentroids=self.__getDiffTracesCentroids()
         listOfCommonTransitions=self.__interClustersDistance()
+        aClusterMax=self.__TraceInAClusterOnly()
+        numberTransitionsPerCluster=self.__maxTransitionsPerCluster(max_t)
 
-        full_formula = And([], [], log_to_PN_w_formula+centroidsFormulasList+diffTracesCentroids+listOfCommonTransitions)
+        full_formula = And([], [], log_to_PN_w_formula+centroidsFormulasList+diffTracesCentroids+listOfCommonTransitions+aClusterMax+numberTransitionsPerCluster)
         cnf = full_formula.operatorToCnf(self.__variablesGenerator.iterator)
-        self.__wcnf = WCNFPlus()
+        self.__wcnf = WCNF()
         self.__wcnf.extend(cnf)
         self.__minimizingUnclusteredTraces()
-        self.__TraceInAClusterOnly()
         self.__minimizingCommonTransitions(max_t)
         self.__minimizingDiff(max_d)
-        print(self.__wcnf.atms)
-        solver = RC2(self.__wcnf, solver="mc")
+        solver = RC2(self.__wcnf, solver="g4")
         solver.compute()
         print(time.time()-self.__start)
         self.__model = solver.model
@@ -174,12 +176,22 @@ class Amstc:
                     listOfOr.append(diffjit)
             diffPerJ=And([],[],listOfOr)
             listOfAnd.append(diffPerJ)
+
+        list_to_size_of_run= list(range(1,self.__size_of_run+1))
+        max_distance=self.__size_of_run- self.__max_d
+        combinaisons_of_instants=list(itertools.combinations(list_to_size_of_run,max_distance))
+        for j in range (0, len(self.__traces)):
+            listOfAndNeg=[]
+            for instants in combinaisons_of_instants:
+                listOfAndNeg.append(And([],[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i])
+                                        for i in list(instants)],[]))
+            listOfAnd.append(Or([],[],listOfAndNeg))
         return listOfAnd
 
     def __minimizingDiff(self,max_d):
-        for j in range (0,len(self.__traces)):
-            listOfDiff=[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i]) for i in range  (1,self.__size_of_run+1)]
-            self.__wcnf.append([listOfDiff,max_d],is_atmost=True)
+        #for j in range (0,len(self.__traces)):
+        #    listOfDiff=[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i]) for i in range  (1,self.__size_of_run+1)]
+        #    self.__wcnf.append([listOfDiff,max_d],is_atmost=True)
             #for i in range (1,self.__size_of_run+1):
                 #indexOfWait=self.__transitions.index(self.__wait_transition)
                 #self.__wcnf.append([-1*self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[j,i,indexOfWait])],1)
@@ -202,21 +214,45 @@ class Amstc:
 
 
     def __TraceInAClusterOnly(self):
+        listOfFormula=[]
         for j in range (0, len(self.__traces)):
-            clusterisedOrNot=[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_IN_K,[j,k]) for k in range(0,self.__nb_clusters)]
-            clusterisedOrNot.append(-1*self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_CLUSTERISED,[j]))
-            self.__wcnf.append([clusterisedOrNot,1],is_atmost=1)
+            listOfAndNeg=[]
+            for k1 in range (0,self.__nb_clusters):
+                listOfAndNeg.append(And([self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_CLUSTERISED,[j]),
+                                         self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_IN_K,[j,k1])],
+                                        [self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_IN_K,[j,k])
+                                            for k in range (0,self.__nb_clusters) if k!=k1],[]))
+
+            allKNot=[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_IN_K,[j,k]) for k in range(0,self.__nb_clusters)]
+            allKNot.append(self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_CLUSTERISED,[j]))
+            listOfAndNeg.append(And([],allKNot,[]))
+            listOfFormula.append(Or([],[],listOfAndNeg))
+        return  listOfFormula
 
     def __minimizingUnclusteredTraces(self):
         for j in range (0, len(self.__traces)):
             for k in range(0, len(self.__traces)):
                 self.__wcnf.append([self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_J_IN_K,[j,k])],1)
 
+    def __maxTransitionsPerCluster(self,max_t):
+        listOfAnd=[]
+        list_of_transitions_indexes= [t for t in range(0,len(self.__transitions)) if self.__transitions[t]!=self.__wait_transition_model]
+        max_tFalse=len(self.__transitions)- max_t-1
+        print("xxx",max_tFalse)
+        combinaisons_of_transtions=list(itertools.combinations(list_of_transitions_indexes,max_tFalse))
+        for k in range (0, self.__nb_clusters):
+            listOfAndNeg=[]
+            for transitions_indexes in combinaisons_of_transtions:
+                listOfAndNeg.append(And([],[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRANSITION_IN_K,[k,i])
+                                            for i in list(transitions_indexes)],[]))
+            listOfAnd.append(Or([],[],listOfAndNeg))
+        return listOfAnd
+
     def __minimizingCommonTransitions(self,max_t):
         for k1 in range (0,self.__nb_clusters):
-            self.__wcnf.append([[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRANSITION_IN_K,[k1,t])
-                                 for t in range (0,len(self.__transitions))
-                                 if self.__transitions[t]!=self.__wait_transition_model],max_t],is_atmost=True)
+            #self.__wcnf.append([[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRANSITION_IN_K,[k1,t])
+            #                     for t in range (0,len(self.__transitions))
+            #                     if self.__transitions[t]!=self.__wait_transition_model],max_t],is_atmost=True)
             for transition in self.__transitions:
                 t=self.__transitions.index(transition)
                 #self.__wcnf.append([-1*self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRANSITION_IN_K,[k1,t])],1)
