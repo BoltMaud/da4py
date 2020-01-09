@@ -64,7 +64,7 @@ def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_tr
     return And(positives,negatives,[]),traces
 
 
-def log_to_Petri_with_w(traces_xes, ttransitions, variablesGenerator, size_of_run, wait_transition, label_l=BOOLEAN_VAR_TRACES_ACTIONS,label_m=BOOLEAN_VAR_TRACES_MARKING,max_nbTraces=None):
+def log_to_Petri_with_w(traces_xes, ttransitions, variablesGenerator, size_of_run, wait_transition_trace,wait_transition_model, label_l=BOOLEAN_VAR_TRACES_ACTIONS,label_m=BOOLEAN_VAR_TRACES_MARKING,max_nbTraces=None):
     def is_run_for_j(j,size_of_run, places, transitions,transitions_of_traces, m0, mf, m_ip, tau_it,reach_final):
         '''
         The is_run method allows one to create the boolean paths of the petri net.
@@ -170,7 +170,10 @@ def log_to_Petri_with_w(traces_xes, ttransitions, variablesGenerator, size_of_ru
             petri.utils.add_arc_from_to(place_prec,transition,net_of_trace)
             place_prec=place_suiv
         mf = petri.petrinet.Marking()
-        net_of_trace.transitions.add(wait_transition)
+        net_of_trace.transitions.add(wait_transition_trace)
+        net_of_trace.transitions.add(wait_transition_model)
+        petri.utils.add_arc_from_to(wait_transition_model, place_prec, net_of_trace)
+        petri.utils.add_arc_from_to(place_prec,wait_transition_model, net_of_trace)
         mf[place_prec]=1
         places = [p for p in net_of_trace.places]
         transitions_of_traces=[p for p in net_of_trace.transitions]

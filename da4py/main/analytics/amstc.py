@@ -40,7 +40,9 @@ BOOLEAN_VAR_TRANSITION_IN_K="c_kt"
 BOOLEAN_VAR_COMMON_T="common_kkt"
 BOOLEAN_VAR_J_CLUSTERISED="inC_j"
 
-WAIT_LABEL="w"
+WAIT_LABEL_TRACE="w"
+WAIT_LABEL_MODEL="ww"
+
 
 class Amstc:
 
@@ -50,8 +52,12 @@ class Amstc:
         self.__size_of_run=size_of_run
         self.__transitions=list(pn.transitions)
         self.__places=list(pn.places)
-        self.__wait_transition=PetriNet.Transition(WAIT_LABEL, WAIT_LABEL)
-        self.__transitions.append(self.__wait_transition)
+        self.__wait_transition_trace=PetriNet.Transition(WAIT_LABEL_TRACE, WAIT_LABEL_TRACE)
+        self.__wait_transition_model=PetriNet.Transition(WAIT_LABEL_MODEL, WAIT_LABEL_MODEL)
+
+        self.__transitions.append(self.__wait_transition_trace)
+        self.__transitions.append(self.__wait_transition_model)
+
         self.__nb_clusters=nb_clusters
         self.__start=time.time()
         self.__createSATformula( pn, m0, mf, max_d, max_t,traces_xes)
@@ -59,7 +65,7 @@ class Amstc:
     def __createSATformula(self, pn, m0, mf, max_d,max_t, traces_xes):
         self.__variablesGenerator=VariablesGenerator()
         log_to_PN_w_formula, self.__traces=log_to_Petri_with_w(traces_xes, self.__transitions, self.__variablesGenerator,
-                                                  self.__size_of_run,self.__wait_transition,
+                                                  self.__size_of_run,self.__wait_transition_trace,self.__wait_transition_model,
                                                   label_l=BOOLEAN_VAR_TRACES_ACTIONS,
                                                   max_nbTraces=None)
 
@@ -93,7 +99,10 @@ class Amstc:
                                                                              for t2 in transitions if t != t2],[]))
             formulas=[Or([],[],or_formulas)]
             for t in transitions:
-                formulas.append(Or([], [tau_jip([j,i, transitions.index(t)])], [
+                if t==self.__wait_transition_trace:
+                    formulas.append(And([],[tau_jip([j,i, transitions.index(t)])],[]))
+                else :
+                    formulas.append(Or([], [tau_jip([j,i, transitions.index(t)])], [
                     And([],[],[is_transition_centroid(j,places, t, i, m_jip),
                                in_cluster_of_j(t,c_kt,j,chi_jk,nb_clusters)])]))
             return And([], [], formulas)
@@ -144,17 +153,11 @@ class Amstc:
         self.__variablesGenerator.add(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[(0,len(self.__traces)),(1,self.__size_of_run+1)])
         listOfAnd=[]
         listOfOr=[]
-        indexOfWait=self.__transitions.index(self.__wait_transition)
+        indexOfWait=self.__transitions.index(self.__wait_transition_trace)
         for j in range (0, len(self.__traces)):
             for i in range(1,self.__size_of_run+1):
                 for t in range(0,len(self.__transitions)):
-                    if t == indexOfWait:
-                        diffjit=Or([self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i])],[],[
-                                    And([],[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[j,i,indexOfWait]),
-                                            self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_CHI_TRANSITIONS,[j,i,indexOfWait])
-                                            ],[])])
-                    else :
-                        diffjit=Or([self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i]),
+                    diffjit=Or([self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i]),
                                     self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[j,i,t])],
                                    [self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_CHI_TRANSITIONS,[j,i,t])],[])
                     listOfOr.append(diffjit)
@@ -166,9 +169,9 @@ class Amstc:
         for j in range (0,len(self.__traces)):
             listOfDiff=[self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i]) for i in range  (1,self.__size_of_run+1)]
             self.__wcnf.append([listOfDiff,max_d],is_atmost=True)
-            for i in range (1,self.__size_of_run+1):
-                indexOfWait=self.__transitions.index(self.__wait_transition)
-                #self.__wcnf.append([-1*self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[j,i,indexOfWait])],1000)
+            #for i in range (1,self.__size_of_run+1):
+                #indexOfWait=self.__transitions.index(self.__wait_transition)
+                #self.__wcnf.append([-1*self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS,[j,i,indexOfWait])],1)
         for j in range (0, len(self.__traces)):
             for i in range(1,self.__size_of_run+1):
                 self.__wcnf.append([-1*self.__variablesGenerator.getVarNumber(BOOLEAN_VAR_diff_TRACE_CENTROIDS,[j,i])],1)
