@@ -9,8 +9,8 @@ def test_add_1_variable():
         for j in range(0, 5):
             for a in range(0, 8):
                 print("aaaaa")
-                print(test.getVarNumber("m",[i,j,a]))
+                print(test.get("m", [i, j, a]))
                 print(test.getVarName(1))
-                assert test.getVarName(test.getVarNumber("m",[i,j,a])) == "m ["+str(i)+", "+str(j)+", "+str(a)+"]"
+                assert test.getVarName(test.get("m", [i, j, a])) == "m [" + str(i) + ", " + str(j) + ", " + str(a) + "]"
 
 

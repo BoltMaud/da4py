@@ -118,7 +118,7 @@ class VariablesGenerator:
         self.iterator = self.set[name].function([(couple[1] - 1) for couple in listOfCouples]) + 1
         self.set[name].max = self.iterator
 
-    def getVarNumber(self, name, listOfElements):
+    def get(self, name, listOfElements):
         '''
         Returns int of the requested variable
         Example of use :
@@ -130,7 +130,7 @@ class VariablesGenerator:
         '''
         return self.set[name].function(listOfElements)
 
-    def getfunction(self, name):
+    def getFunction(self, name):
         '''
         :param name (string) : name of the variable
         :return function of the variable

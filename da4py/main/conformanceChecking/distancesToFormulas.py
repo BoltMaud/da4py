@@ -38,7 +38,7 @@ BOOLEAN_VAR_EDIT_DISTANCE = "djiid"
 BOOLEAN_VAR_HAMMING_DISTANCE="dji"
 BOOLEAN_VAR_HAMMING_SUP_AUX="supjd"
 
-# some little parallelism
+# some parallelism
 NB_MAX_THREADS = 50
 
 # the different artefacts, inputs of the generic functions
@@ -46,11 +46,11 @@ MULTI_ALIGNMENT = "multi"
 ANTI_ALIGNMENT = "anti"
 EXACT_ALIGNMENT = "exact"
 
-def for_hamming_distance_aux_supd(artefact,variables,lenTraces,max_d,size_of_run):
+def for_hamming_distance_aux_supd(artefact, vars, lenTraces, max_d, size_of_run):
     if artefact==MULTI_ALIGNMENT:
-        return for_hamming_distance_aux_supd_multi(variables,lenTraces,max_d,size_of_run)
+        return for_hamming_distance_aux_supd_multi(vars, lenTraces, max_d, size_of_run)
     else:
-        return for_hamming_distance_aux_supd_anti(variables,lenTraces,max_d,size_of_run)
+        return for_hamming_distance_aux_supd_anti(vars, lenTraces, max_d, size_of_run)
 
 def for_hamming_distance_aux_supd_anti(variables,lenTraces,max_d,size_of_run):
     list_of_formula=[]
@@ -63,13 +63,13 @@ def for_hamming_distance_aux_supd_anti(variables,lenTraces,max_d,size_of_run):
             for sub_list_of_instants in combinaisons_of_instants:
                 instants_to_combine=[]
                 for instant in list(sub_list_of_instants):
-                    instants_to_combine.append(variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,instant]))
+                    instants_to_combine.append(variables.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, instant]))
                 and_sub_instants.append(And(instants_to_combine,[],[]))
-            not_d_or_and_diff.append(Or([],[variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])],and_sub_instants))
+            not_d_or_and_diff.append(Or([], [variables.get(BOOLEAN_VAR_HAMMING_SUP_AUX, [j, d])], and_sub_instants))
     list_of_formula.append(And([],[],not_d_or_and_diff))
     return list_of_formula
 
-def for_hamming_distance_aux_supd_multi(variables,lenTraces,max_d,size_of_run):
+def for_hamming_distance_aux_supd_multi(vars, lenTraces, max_d, size_of_run):
     list_of_formula=[]
     list_to_size_of_run= list(range(1,size_of_run+1))
     not_d_or_and_diff=[]
@@ -80,13 +80,13 @@ def for_hamming_distance_aux_supd_multi(variables,lenTraces,max_d,size_of_run):
             for sub_list_of_instants in combinaisons_of_instants:
                 instants_to_combine=[]
                 for instant in list(sub_list_of_instants):
-                    instants_to_combine.append(variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,instant]))
+                    instants_to_combine.append(vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, instant]))
                 and_sub_instants.append(Or([],instants_to_combine,[]))
-            not_d_or_and_diff.append(Or([variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])],[],[And([],[],and_sub_instants)]))
+            not_d_or_and_diff.append(Or([vars.get(BOOLEAN_VAR_HAMMING_SUP_AUX, [j, d])], [], [And([], [], and_sub_instants)]))
     list_of_formula.append(And([],[],not_d_or_and_diff))
     return list_of_formula
 
-def hamming_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, variables, nbTraces, size_of_run):
+def hamming_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, vars, nbTraces, size_of_run):
     '''
     Generic function that calls either bodyHammingDistance(), bodyHammingDistance_reducedForMultiAlignment() or
     bodyHammingDistance_reducedForAntiAlignment() depending on artefact value
@@ -98,12 +98,12 @@ def hamming_distance_per_trace_to_SAT(artefact, transitions, silent_transitions,
     :param size_of_run (int) : maximal size of run
     :return: formula
     '''
-    variables.add(BOOLEAN_VAR_HAMMING_DISTANCE, [(0, nbTraces), (0, size_of_run + 1)])
+    vars.add(BOOLEAN_VAR_HAMMING_DISTANCE, [(0, nbTraces), (0, size_of_run + 1)])
     bodyFunction = DICT_OF_HAMMING_BODY[artefact]
-    return bodyFunction(transitions, silent_transitions, variables, nbTraces, size_of_run)
+    return bodyFunction(transitions, silent_transitions, vars, nbTraces, size_of_run)
 
 
-def bodyHammingDistance(transitions, silent_transitions, variables, nbTraces, size_of_run):
+def bodyHammingDistance(transitions, silent_transitions, vars, nbTraces, size_of_run):
     '''
     Exact formula of hamming distance.
     :param transitions (list) : the transitions
@@ -121,22 +121,22 @@ def bodyHammingDistance(transitions, silent_transitions, variables, nbTraces, si
                     create_diff = Or([],
                                      [],
                                      [
-                                         And([variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [], [
-                                             Or([variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
-                                                 variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [], [])
+                                         And([vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [], [
+                                             Or([vars.get(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
+                                                 vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [], [])
                                          ]),
-                                         And([], [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
-                                                  variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
-                                                  variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
+                                         And([], [vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                                  vars.get(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
+                                                  vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
                                      ])
                 else:
-                    create_diff = Or([], [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
-                                          variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
+                    create_diff = Or([], [vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                          vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
                 formulas.append(create_diff)
     return formulas
 
 
-def bodyHammingDistance_reducedForMultiAlignment(transitions, silent_transitions, variables, nbTraces, size_of_run):
+def bodyHammingDistance_reducedForMultiAlignment(transitions, silent_transitions, vars, nbTraces, size_of_run):
     '''
     Reduced formula of hamming distance for multi-alignment
     :param transitions (list) : the transitions
@@ -152,18 +152,18 @@ def bodyHammingDistance_reducedForMultiAlignment(transitions, silent_transitions
             for t in range(0, len(transitions)):
                 if transitions[t] not in silent_transitions:
                     # tau_i,t => (lamdba_i,a or diff_i )
-                    create_diff = Or([variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
-                                      variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])],
-                                     [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [])
+                    create_diff = Or([vars.get(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]),
+                                      vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])],
+                                     [vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t])], [])
                 else:
                     # tau_i,silent => not diff_i
-                    create_diff = Or([], [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
-                                          variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
+                    create_diff = Or([], [vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                          vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
                 formulas.append(create_diff)
     return formulas
 
 
-def bodyHammingDistance_reducedForAntiAlignment(transitions, silent_transitions, variables, nbTraces, size_of_run):
+def bodyHammingDistance_reducedForAntiAlignment(transitions, silent_transitions, vars, nbTraces, size_of_run):
     '''
     Reduced formula of hamming distance for anti-alignment
     :param transitions (list) : the transitions
@@ -179,15 +179,15 @@ def bodyHammingDistance_reducedForAntiAlignment(transitions, silent_transitions,
             for t in range(0, len(transitions)):
                 if transitions[t] not in silent_transitions:
                     # (tau_i,t and lambda_i,t ) => not diff_i
-                    create_diff = Or([], [variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [
+                    create_diff = Or([], [vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [
                         Or([],
-                           [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
-                            variables.getVarNumber(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]), ], [])
+                           [vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                            vars.get(BOOLEAN_VAR_TRACES_ACTIONS, [j, i, t]), ], [])
                     ])
                 else:
                     # tau_ti => not diff_i
-                    create_diff = Or([], [variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
-                                          variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
+                    create_diff = Or([], [vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, t]),
+                                          vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])], [])
                 formulas.append(create_diff)
     return formulas
 
@@ -198,7 +198,7 @@ DICT_OF_HAMMING_BODY = {MULTI_ALIGNMENT: bodyHammingDistance_reducedForMultiAlig
                         EXACT_ALIGNMENT: bodyHammingDistance}
 
 
-def edit_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, variables, nbTraces, size_of_run,
+def edit_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, vars, nbTraces, size_of_run,
                                    wait_transition, max_d):
     '''
     Generic function of the edit distance.
@@ -216,8 +216,8 @@ def edit_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, va
     initialisation_function = DICT_OF_EDIT_INIT[artefact]
     recursion_function = DICT_OF_EDIT_RECURSIONS[artefact]
     # add djiid boolean variables. See paper _Encoding Conformance Checking Artefacts in SAT_ for more details
-    variables.add(BOOLEAN_VAR_EDIT_DISTANCE,
-                  [(0, nbTraces), (0, size_of_run + 1), (0, size_of_run + 1), (0, max_d + 1)])
+    vars.add(BOOLEAN_VAR_EDIT_DISTANCE,
+             [(0, nbTraces), (0, size_of_run + 1), (0, size_of_run + 1), (0, max_d + 1)])
 
     # some simple parallelism
     formulas = []
@@ -225,7 +225,7 @@ def edit_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, va
     for i in range(0, NB_MAX_THREADS):
         process = Thread(target=aux_for_threading,
                          args=[formulas, recursion_function, initialisation_function, transitions, silent_transitions,
-                               variables, size_of_run, wait_transition,
+                               vars, size_of_run, wait_transition,
                                max_d, i, nbTraces])
         process.start()
         threads.append(process)
@@ -235,7 +235,7 @@ def edit_distance_per_trace_to_SAT(artefact, transitions, silent_transitions, va
     return formulas
 
 
-def aux_for_threading(formulas, recursion_function, initialisation_function, transitions, silent_transitions, variables,
+def aux_for_threading(formulas, recursion_function, initialisation_function, transitions, silent_transitions, vars,
                       size_of_run, wait_transition, max_d, i,
                       nbTraces):
     '''
@@ -256,15 +256,15 @@ def aux_for_threading(formulas, recursion_function, initialisation_function, tra
     # each thread does some edit distance formula of some trace
     for j in range(i, nbTraces, NB_MAX_THREADS):
         init = initialisation_function(transitions, silent_transitions,
-                                       variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
-                                       variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                                       variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j,
+                                       vars.getFunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+                                       vars.getFunction(BOOLEAN_VAR_TRACES_ACTIONS),
+                                       vars.getFunction(BOOLEAN_VAR_EDIT_DISTANCE), j,
                                        size_of_run, wait_transition, max_d)
         formulas.append(init)
         rec = recursion_function(transitions, silent_transitions,
-                                 variables.getfunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
-                                 variables.getfunction(BOOLEAN_VAR_TRACES_ACTIONS),
-                                 variables.getfunction(BOOLEAN_VAR_EDIT_DISTANCE), j, size_of_run, wait_transition,
+                                 vars.getFunction(BOOLEAN_VAR_FIRING_TRANSITION_PN),
+                                 vars.getFunction(BOOLEAN_VAR_TRACES_ACTIONS),
+                                 vars.getFunction(BOOLEAN_VAR_EDIT_DISTANCE), j, size_of_run, wait_transition,
                                  max_d)
 
         formulas += (rec)

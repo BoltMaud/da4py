@@ -159,22 +159,22 @@ class ConformanceArtefacts:
         :return:
         '''
         # this variable (__variables) memorises the numbers of the boolean variables of the formula
-        self.__variables = vg.VariablesGenerator()
+        self.__vars = vg.VariablesGenerator()
 
         # we add a "wait" transition to complete the words
         self.__wait_transition = self.__add_wait_net()
 
         self.__start_time = time.time()
         # the model is translated to a formula
-        pn_formula, places, self.__transitions, self.__silent_transitions = petri_net_to_SAT(self.__net, m0, mf, self.__variables,
-                                                                  self.__size_of_run,
-                                                                  self.__reachFinal,
-                                                                  label_m=BOOLEAN_VAR_MARKING_PN,
-                                                                  label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN,
-                                                                   silent_transition=self.__silent_label)
+        pn_formula, places, self.__transitions, self.__silent_transitions = petri_net_to_SAT(self.__net, m0, mf, self.__vars,
+                                                                                             self.__size_of_run,
+                                                                                             self.__reachFinal,
+                                                                                             label_m=BOOLEAN_VAR_MARKING_PN,
+                                                                                             label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN,
+                                                                                             silent_transition=self.__silent_label)
         # the log is translated to a formula
-        log_formula, traces = log_to_SAT(traces, self.__transitions, self.__variables, self.__size_of_run,
-                                         self.__wait_transition,max_nbTraces=self.__max_nbTraces)
+        log_formula, traces = log_to_SAT(traces, self.__transitions, self.__vars, self.__size_of_run,
+                                         self.__wait_transition, max_nbTraces=self.__max_nbTraces)
         self.__traces = traces
         return [pn_formula, log_formula], self.__wait_transition
 
@@ -186,10 +186,10 @@ class ConformanceArtefacts:
         '''
 
         if self.__distance_type == HAMMING_DISTANCE:
-            return hamming_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__variables, len(self.__traces),
+            return hamming_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__vars, len(self.__traces),
                                                      self.__size_of_run)
         elif self.__distance_type == EDIT_DISTANCE:
-            return edit_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__variables, len(self.__traces),
+            return edit_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__vars, len(self.__traces),
                                                   self.__size_of_run,
                                                   self.__wait_transition, self.__max_d)
         else:
@@ -206,7 +206,7 @@ class ConformanceArtefacts:
         '''
         formulas = initialisationFormulas + distanceFormula + self.__sup_to_minimize(artefactForMinimization)
         full_formula = And([], [], formulas)
-        cnf = full_formula.operatorToCnf(self.__variables.iterator)
+        cnf = full_formula.operatorToCnf(self.__vars.iterator)
         wcnf = WCNF()
         wcnf.extend(cnf)
         wcnf = self.__createWeights(wcnf,artefactForMinimization)
@@ -228,14 +228,14 @@ class ConformanceArtefacts:
         # MIN real anti/multi
         if self.__optimizeMin==True :
             for d in range(0, self.__max_d ):
-                wcnf.append([weightsOnVariables * self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],WEIGHT_ON_CLAUSES_TO_REDUCE)
+                wcnf.append([weightsOnVariables * self.__vars.get(BOOLEAN_VAR_SUP, [d])], WEIGHT_ON_CLAUSES_TO_REDUCE)
         # SUM
         else :
             if self.__distance_type == EDIT_DISTANCE:
                 for j in range(0, len(self.__traces)):
                     for d in range(1, self.__max_d + 1):
-                        wcnf.append([weightsOnVariables * self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
-                                                                                       [j, self.__size_of_run,
+                        wcnf.append([weightsOnVariables * self.__vars.get(BOOLEAN_VAR_EDIT_DISTANCE,
+                                                                          [j, self.__size_of_run,
                                                                                         self.__size_of_run, d])],
                                    WEIGHT_ON_CLAUSES_TO_REDUCE)
 
@@ -243,7 +243,7 @@ class ConformanceArtefacts:
             elif self.__distance_type == HAMMING_DISTANCE:
                 for j in range(0, len(self.__traces)):
                     for i in range(1, self.__size_of_run + 1):
-                        wcnf.append([weightsOnVariables * self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])],
+                        wcnf.append([weightsOnVariables * self.__vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, i])],
                                     WEIGHT_ON_CLAUSES_TO_REDUCE)
         return wcnf
 
@@ -267,12 +267,12 @@ class ConformanceArtefacts:
         try :
             if self.__distance_type==EDIT_DISTANCE:
                 for d in range (self.__max_d,-1,-1):
-                    if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
+                    if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
                         print(d, self.__max_d)
                         return float(1)-float(d)/float(self.__max_d)
             if self.__distance_type==HAMMING_DISTANCE:
                 for d in range (self.__size_of_run,-1,-1):
-                    if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
+                    if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
                         print(d, self.__max_d)
                         return float(1)-float(d)/float(self.__max_d)
         except:
@@ -285,16 +285,16 @@ class ConformanceArtefacts:
         '''
         if self.__optimizeMin:
             for d in range (self.__max_d,-1,-1):
-                if self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d]) in self.__model:
+                if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
                     return d
         else :
             # subfunction to get the good variables.
             if self.__distance_type=="hamming":
                 def functionDistance(j,d):
-                    return self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE,[j,d])
+                    return self.__vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, d])
             else:
                 def functionDistance(j,d):
-                    return self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,self.__size_of_run,self.__size_of_run,d])
+                    return self.__vars.get(BOOLEAN_VAR_EDIT_DISTANCE, [j, self.__size_of_run, self.__size_of_run, d])
             # when one maximised the max, we check all the traces.
             for d in range (0,self.__max_d):
                     for j in range(0,len(self.__traces)):
@@ -308,7 +308,7 @@ class ConformanceArtefacts:
         '''
         i_wait=self.__transitions.index(self.__wait_transition)
         for i in range(self.__size_of_run,0,-1):
-            if self.__variables.getVarNumber(BOOLEAN_VAR_FIRING_TRANSITION_PN,[i,i_wait]) not in self.__model:
+            if self.__vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, i_wait]) not in self.__model:
                 return i
 
     def getRun(self,debug=False):
@@ -321,10 +321,10 @@ class ConformanceArtefacts:
             run = "<"
             run_list=[]
             for var in self.__model:
-                if self.__variables.getVarName(var) != None and self.__variables.getVarName(var).startswith(
+                if self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith(
                         BOOLEAN_VAR_FIRING_TRANSITION_PN):
-                    index = self.__variables.getVarName(var).split("]")[0].split(",")[1]
-                    i = self.__variables.getVarName(var).split("[")[1].split(",")[0]
+                    index = self.__vars.getVarName(var).split("]")[0].split(",")[1]
+                    i = self.__vars.getVarName(var).split("[")[1].split(",")[0]
                     run += " (" + i + ", " + str(self.__transitions[int(index)]) + ") "
                     run_list.append(str(self.__transitions[int(index)]))
             run += ">"
@@ -359,14 +359,14 @@ class ConformanceArtefacts:
             if self.__distance_type == EDIT_DISTANCE:
                 max_d = 0
                 for d in range(0, self.__max_d ):
-                    if self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,
-                                                     [l, self.__size_of_run, self.__size_of_run, d]) in self.__model:
+                    if self.__vars.get(BOOLEAN_VAR_EDIT_DISTANCE,
+                                       [l, self.__size_of_run, self.__size_of_run, d]) in self.__model:
                         max_d = d
 
             if self.__distance_type == HAMMING_DISTANCE:
                 max_d = 0
                 for i in range(1, self.__size_of_run + 1):
-                    if self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_DISTANCE, [l, i]) in self.__model:
+                    if self.__vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [l, i]) in self.__model:
                         max_d += 1
             return max_d
         else:
@@ -386,18 +386,18 @@ class ConformanceArtefacts:
             return []
         else :
             # create new variables SUPD
-            self.__variables.add(BOOLEAN_VAR_SUP,[(0,self.__max_d+1)])
+            self.__vars.add(BOOLEAN_VAR_SUP, [(0, self.__max_d + 1)])
 
             if self.__distance_type== EDIT_DISTANCE:
                 def variables_edit_distance(j,d):
-                    return self.__variables.getVarNumber(BOOLEAN_VAR_EDIT_DISTANCE,[j,self.__size_of_run,self.__size_of_run,d])
+                    return self.__vars.get(BOOLEAN_VAR_EDIT_DISTANCE, [j, self.__size_of_run, self.__size_of_run, d])
                 return self.__sup_to_minimize_with_distance_function(artefact,variables_edit_distance)
 
             elif self.__distance_type==HAMMING_DISTANCE:
-                self.__variables.add(BOOLEAN_VAR_HAMMING_SUP_AUX,[(0,len(self.__traces)),(0,self.__max_d+1)])
+                self.__vars.add(BOOLEAN_VAR_HAMMING_SUP_AUX, [(0, len(self.__traces)), (0, self.__max_d + 1)])
                 def variables_edit_distance(j,d):
-                    return self.__variables.getVarNumber(BOOLEAN_VAR_HAMMING_SUP_AUX,[j,d])
-                d_max_per_j = for_hamming_distance_aux_supd(artefact,self.__variables,len(self.__traces),self.__max_d,self.__size_of_run)
+                    return self.__vars.get(BOOLEAN_VAR_HAMMING_SUP_AUX, [j, d])
+                d_max_per_j = for_hamming_distance_aux_supd(artefact, self.__vars, len(self.__traces), self.__max_d, self.__size_of_run)
                 return d_max_per_j+ self.__sup_to_minimize_with_distance_function(artefact,variables_edit_distance)
 
     def __sup_to_minimize_with_distance_function(self,artefact,variablesFunction):
@@ -409,7 +409,7 @@ class ConformanceArtefacts:
                     # delta_j1nnd and delta_j2nnd and ... delta_jlnnd
                     list_of_d.append(variablesFunction(j,d))
                 # not di or ( dji and dji ... dji)
-                not_di_or_list_of_and=Or([],[self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],[
+                not_di_or_list_of_and=Or([], [self.__vars.get(BOOLEAN_VAR_SUP, [d])], [
                     And(list_of_d,[],[])])
                 list_of_formula.append(not_di_or_list_of_and)
 
@@ -420,7 +420,7 @@ class ConformanceArtefacts:
                     # not delta_j1nnd or not delta_j2nnd or ... not delta_jlnnd
                     list_of_d.append(variablesFunction(j,d))
                 #  di or ( dji or dji ... dji)
-                not_di_or_list_of_and=Or([self.__variables.getVarNumber(BOOLEAN_VAR_SUP,[d])],[],[And([],list_of_d,[])])
+                not_di_or_list_of_and=Or([self.__vars.get(BOOLEAN_VAR_SUP, [d])], [], [And([], list_of_d, [])])
                 list_of_formula.append(not_di_or_list_of_and)
         return  list_of_formula
 
