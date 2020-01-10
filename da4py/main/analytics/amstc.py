@@ -19,9 +19,6 @@ By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 import time
 import itertools
 
-
-from pm4py.objects import petri
-
 from da4py.main.utils.variablesGenerator import VariablesGenerator
 from pm4py.objects.petri.petrinet import PetriNet
 from pysat.examples.rc2 import RC2
@@ -42,6 +39,8 @@ BOOLEAN_VAR_J_CLUSTERISED="inC_j"
 WAIT_LABEL_TRACE="w"
 WAIT_LABEL_MODEL="ww"
 
+# some parallelism
+NB_MAX_THREADS = 50
 
 class Amstc:
     '''
@@ -114,7 +113,7 @@ class Amstc:
                                                                self.__size_of_run, self.__wait_transition_trace,
                                                                self.__wait_transition_model,
                                                                label_l=BOOLEAN_VAR_TRACES_ACTIONS,
-                                                               max_nbTraces=12)
+                                                               max_nbTraces=None)
         # creates the boolean variables for the next formulas
         self.__createBooleanVariables()
         # formula of centroids
@@ -165,6 +164,7 @@ class Amstc:
         :return:
         '''
         # thanks to pysat library
+        print("formulas", time.time()-self.__start)
         self.__wcnf = WCNF()
         self.__wcnf.extend(cnf)
         # most of the traces should be clustered
@@ -477,6 +477,8 @@ class Amstc:
         clustering.append(({"Unclusterized"},unclusterized))
         return  clustering
 
+    def getTime(self):
+        return self.__endComputationTime-self.__start
 
 
 

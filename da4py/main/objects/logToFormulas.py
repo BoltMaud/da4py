@@ -20,6 +20,7 @@
     By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 '''
 import time
+from threading import Thread
 
 from pm4py.objects import petri
 from pm4py.objects.log.util.log import project_traces
@@ -28,6 +29,7 @@ import numpy as np
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 BOOLEAN_VAR_TRACES_MARKING= "m_jip"
 
+NB_MAX_THREADS=50
 
 from da4py.main.utils.formulas import And, Or
 
