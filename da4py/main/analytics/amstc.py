@@ -111,9 +111,10 @@ class Amstc:
         self.__vars=VariablesGenerator()
         # formula version of data event log
         log_to_PN_w_formula, self.__traces=log_to_Petri_with_w(traces_xes, self.__transitions, self.__vars,
-                                                               self.__size_of_run, self.__wait_transition_trace, self.__wait_transition_model,
+                                                               self.__size_of_run, self.__wait_transition_trace,
+                                                               self.__wait_transition_model,
                                                                label_l=BOOLEAN_VAR_TRACES_ACTIONS,
-                                                               max_nbTraces=None)
+                                                               max_nbTraces=12)
         # creates the boolean variables for the next formulas
         self.__createBooleanVariables()
         # formula of centroids
@@ -434,13 +435,12 @@ class Amstc:
             for k in range(0, len(self.__traces)):
                 self.__wcnf.append([self.__vars.get(BOOLEAN_VAR_J_IN_K, [j, k])], 1)
 
-    def testPrint(self):
+    def getClustering(self):
         clusters={}
         traces={}
         trs={}
-        print(self.__transitions)
+        clusterized=[]
         for var in self.__model:
-            print(self.__vars.getVarName(var)) if self.__vars.getVarName(var) is not None else None
             if self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith(
                     BOOLEAN_VAR_K_CONTAINS_T):
                 k= self.__vars.getVarName(var).split("[")[1].split(",")[0]
@@ -448,28 +448,34 @@ class Amstc:
                 if int(k) not in clusters.keys():
                     clusters[int(k)]=[]
                 clusters[int(k)].append(t)
-            if self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith(
+            elif self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith(
                     BOOLEAN_VAR_J_IN_K):
                 j= self.__vars.getVarName(var).split("[")[1].split(",")[0]
+                clusterized.append(int(j))
                 k=(self.__vars.getVarName(var).split("]")[0].split(",")[1])
                 if int(k) not in traces.keys():
                     traces[int(k)]=[]
                 traces[int(k)].append(j)
-            if self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith(
+            elif self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith(
                 BOOLEAN_VAR_TRACES_ACTIONS):
                 j= self.__vars.getVarName(var).split("[")[1].split(",")[0]
                 i=(self.__vars.getVarName(var).split("]")[0].split(",")[1])
                 a=(self.__vars.getVarName(var).split("]")[0].split(",")[2])
                 if int(j) not in trs.keys():
                     trs[int(j)]=[]
-                trs[int(j)].append('('+i+'-'+str(self.__transitions[int(a)])+')')
+                trs[int(j)].append(str(self.__transitions[int(a)]))
+
+        clustering=[]
         for i in clusters:
-            print(clusters[i])
+            cluster=(set(clusters[i]),[])
             if i in traces:
                 for j in traces[i]:
-                    print([a for a in trs[int(j)]])
-            print()
-        print(self.__traces)
+                    cluster[1].append([a for a in trs[int(j)]])
+            clustering.append(cluster)
+
+        unclusterized = [t for (i,t) in enumerate(self.__traces) if i not in clusterized]
+        clustering.append(({"Unclusterized"},unclusterized))
+        return  clustering
 
 
 
