@@ -22,7 +22,7 @@ import itertools
 from da4py.main.utils.variablesGenerator import VariablesGenerator
 from pm4py.objects.petri.petrinet import PetriNet
 from pysat.examples.rc2 import RC2
-from pysat.formula import WCNF
+from pysat.formula import WCNFPlus
 
 from da4py.main.objects.logToFormulas import log_to_Petri_with_w
 from da4py.main.utils.formulas import And, Or
@@ -38,9 +38,6 @@ BOOLEAN_VAR_J_CLUSTERISED="inC_j"
 
 WAIT_LABEL_TRACE="w"
 WAIT_LABEL_MODEL="ww"
-
-# some parallelism
-NB_MAX_THREADS = 50
 
 class Amstc:
     '''
@@ -113,7 +110,7 @@ class Amstc:
                                                                self.__size_of_run, self.__wait_transition_trace,
                                                                self.__wait_transition_model,
                                                                label_l=BOOLEAN_VAR_TRACES_ACTIONS,
-                                                               max_nbTraces=None)
+                                                               max_nbTraces=10)
         # creates the boolean variables for the next formulas
         self.__createBooleanVariables()
         # formula of centroids
@@ -122,18 +119,24 @@ class Amstc:
         diffTracesCentroids=self.__getDiffTracesCentroids(self.__vars.getFunction(BOOLEAN_VAR_CHI_TRANSITIONS),
                                                           self.__vars.getFunction(BOOLEAN_VAR_DIFF),
                                                           self.__vars.getFunction(BOOLEAN_VAR_TRACES_ACTIONS))
+
+        print("ok")
         # formula that create BOOLEAN_VAR_COMMON_T variables
         listOfCommonTransitions=self.__commonTransitions(self.__vars.getFunction(BOOLEAN_VAR_COMMON_T),
                                                          self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T))
+        print("ok2")
         # formula that describes that a trace belongs to at most one cluster
         aClusterMax=self.__tracesInAClusterOnly(self.__vars.getFunction(BOOLEAN_VAR_J_CLUSTERISED),
                                                 self.__vars.getFunction(BOOLEAN_VAR_J_IN_K))
+        print("ok3")
         # formula that describes maximal number of transitions per centroids
-        numberTransitionsPerCluster=self.__maxTransitionsPerCluster(self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T))
+        #numberTransitionsPerCluster=self.__maxTransitionsPerCluster(self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T))
 
+        print("ok4")
         # concat the formula
         full_formula = And([], [], log_to_PN_w_formula + centroidsFormulasList + diffTracesCentroids +
-                            listOfCommonTransitions + aClusterMax + numberTransitionsPerCluster)
+                            listOfCommonTransitions + aClusterMax )
+        print("ok5")
         # formula to cnf
         cnf = full_formula.operatorToCnf(self.__vars.iterator)
 
@@ -165,7 +168,7 @@ class Amstc:
         '''
         # thanks to pysat library
         print("formulas", time.time()-self.__start)
-        self.__wcnf = WCNF()
+        self.__wcnf = WCNFPlus()
         self.__wcnf.extend(cnf)
         # most of the traces should be clustered
         self.__minimizingUnclusteredTraces()
@@ -173,8 +176,10 @@ class Amstc:
         self.__minimizingCommonTransitions()
         # minimizing BOOLEAN_VAR_diff_TRACE_CENTROIDS variables
         self.__minimizingDiff()
+        #
+        self.__maxTransitionsPerClusterAtMost(self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T))
         # RC2 is a MaxSAT algorithm
-        solver = RC2(self.__wcnf, solver="g4")
+        solver = RC2(self.__wcnf, solver="mc")
         solver.compute()
         self.__endComputationTime=time.time()
         self.__model = solver.model
@@ -289,7 +294,6 @@ class Amstc:
 
         # .....................................................................................
         # here starts __createCentroids function
-        #todo parallelism
         centroidsFormulas=[]
         for j in range (0, len(self.__traces)):
             centroidOfJ=is_run_centroid(j, self.__size_of_run, m0,
@@ -388,6 +392,12 @@ class Amstc:
                 listOfAndNeg.append(And([],[c_kt([k, i])for i in list(transitions_indexes)],[]))
             listOfAnd.append(Or([],[],listOfAndNeg))
         return listOfAnd
+
+    def __maxTransitionsPerClusterAtMost(self,c_kt):
+        for k1 in range (0,self.__nb_clusters):
+            self.__wcnf.append([[c_kt([k1,t])
+                                 for t in range (0,len(self.__transitions))
+                                 if self.__transitions[t]!=self.__wait_transition_model],self.__max_t],is_atmost=True)
 
     def __tracesInAClusterOnly(self, inC_j, chi_jk):
         '''
