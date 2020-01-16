@@ -18,9 +18,13 @@ By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 '''
 import time
 import itertools
+from copy import deepcopy
+
+from pm4py.objects import petri
+from pm4py.visualization.petrinet import factory as vizu
 
 from da4py.main.utils.variablesGenerator import VariablesGenerator
-from pm4py.objects.petri.petrinet import PetriNet
+from pm4py.objects.petri.petrinet import PetriNet, Marking
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNFPlus
 
@@ -45,7 +49,7 @@ class Amstc:
     Creates clusters depending on subnets
     '''
 
-    def __init__(self, pn, m0, mf, traces_xes, size_of_run, max_d, max_t, nb_clusters,silent_label=None):
+    def __init__(self, pn, m0, mf, traces_xes, size_of_run, max_d, max_t, nb_clusters,silent_label=None, nbTraces=20):
         '''
         Initialization of the object that directly launches the clustering
         :param pn (Petrinet)
@@ -61,14 +65,28 @@ class Amstc:
         self.__max_d=max_d
         self.__max_t=max_t
         self.__size_of_run=size_of_run
-        self.__transitions=list(pn.transitions)
-        self.__places=list(pn.places)
+        self.__copy_net(pn,m0,mf)
         self.__nb_clusters=nb_clusters
         self.__silent_transititons=[t for t in self.__transitions if t.label==silent_label]
         # add wait transitions that represents log and model move for alignment
-        self.__addWaitTransitions(pn,mf)
+        self.__addWaitTransitions(self.__pn,self.__mf)
         self.__start=time.time()
-        self.__createSATformula(pn, m0, mf, max_d, max_t,traces_xes)
+        self.__createSATformula(self.__pn, self.__m0, self.__mf, max_d, max_t,traces_xes,nbTraces)
+
+    def __copy_net(self,pn, m0, mf):
+        self.__pn=deepcopy(pn)
+        self.__transitions=list(self.__pn.transitions)
+        self.__places=list(self.__pn.places)
+        self.__arcs=list(self.__pn.arcs)
+        self.__m0=Marking()
+        self.__mf=Marking()
+        for p in self.__pn.places:
+            for n in m0.keys():
+                if n.name==p.name :
+                    self.__m0[p]=1
+            for n in mf.keys():
+                if n.name==p.name:
+                    self.__mf[p]=1
 
     def __addWaitTransitions(self, pn, mf):
         '''
@@ -93,7 +111,7 @@ class Amstc:
         self.__transitions.append(self.__wait_transition_model)
 
 
-    def __createSATformula(self, pn, m0, mf, max_d,max_t, traces_xes):
+    def __createSATformula(self, pn, m0, mf, max_d,max_t, traces_xes,nbTraces):
         '''
         This function creates and solve the SAT formula of the clustering problem.
         :param pn (Petrinet)
@@ -110,33 +128,28 @@ class Amstc:
                                                                self.__size_of_run, self.__wait_transition_trace,
                                                                self.__wait_transition_model,
                                                                label_l=BOOLEAN_VAR_TRACES_ACTIONS,
-                                                               max_nbTraces=10)
+                                                               max_nbTraces=nbTraces)
         # creates the boolean variables for the next formulas
         self.__createBooleanVariables()
         # formula of centroids
-        centroidsFormulasList = self.__createCentroids(m0)
+        centroidsFormulasList = self.__createCentroids(m0,mf)
         # formula that describes maximal distance
         diffTracesCentroids=self.__getDiffTracesCentroids(self.__vars.getFunction(BOOLEAN_VAR_CHI_TRANSITIONS),
                                                           self.__vars.getFunction(BOOLEAN_VAR_DIFF),
                                                           self.__vars.getFunction(BOOLEAN_VAR_TRACES_ACTIONS))
 
-        print("ok")
         # formula that create BOOLEAN_VAR_COMMON_T variables
         listOfCommonTransitions=self.__commonTransitions(self.__vars.getFunction(BOOLEAN_VAR_COMMON_T),
                                                          self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T))
-        print("ok2")
         # formula that describes that a trace belongs to at most one cluster
         aClusterMax=self.__tracesInAClusterOnly(self.__vars.getFunction(BOOLEAN_VAR_J_CLUSTERISED),
                                                 self.__vars.getFunction(BOOLEAN_VAR_J_IN_K))
-        print("ok3")
         # formula that describes maximal number of transitions per centroids
         #numberTransitionsPerCluster=self.__maxTransitionsPerCluster(self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T))
 
-        print("ok4")
         # concat the formula
         full_formula = And([], [], log_to_PN_w_formula + centroidsFormulasList + diffTracesCentroids +
                             listOfCommonTransitions + aClusterMax )
-        print("ok5")
         # formula to cnf
         cnf = full_formula.operatorToCnf(self.__vars.iterator)
 
@@ -167,7 +180,6 @@ class Amstc:
         :return:
         '''
         # thanks to pysat library
-        print("formulas", time.time()-self.__start)
         self.__wcnf = WCNFPlus()
         self.__wcnf.extend(cnf)
         # most of the traces should be clustered
@@ -184,7 +196,7 @@ class Amstc:
         self.__endComputationTime=time.time()
         self.__model = solver.model
 
-    def __createCentroids(self,m0):
+    def __createCentroids(self,m0,mf):
         '''
         Create formula of the subnet centroids. There are one centroid per trace and transitions are affected to cluster.
         As the number of cluster is limited, centroid will naturally be joined : traces are clustered that way.
@@ -268,7 +280,7 @@ class Amstc:
                                               in_cluster_of_j(t, c_kt, j, chi_jk, nb_clusters)])]))
             return And([], [], formulas)
 
-        def is_run_centroid(j, size_of_run,m0, m_jip, tau_jip, c_kt, chi_jk, nb_clusters, transitions, places ):
+        def is_run_centroid(j, size_of_run,m0,mf, m_jip, tau_jip, c_kt, chi_jk, nb_clusters, transitions, places ):
             '''
             Initialization of centroids. There is a run per trace. This run represents alignment of the trace to the
             model. If trace is clusterised then transition of it run are containing in the centroid of its cluster.
@@ -286,6 +298,8 @@ class Amstc:
             :return:
             '''
             positives = [m_jip([j,0, places.index(m)]) for m in m0]
+            for m in mf:
+                positives.append(m_jip([j,size_of_run,places.index(m)]))
             negatives = [m_jip([j,0, places.index(m)]) for m in places if m not in m0]
             formulas = [is_action_centroid(j,places, transitions, i, m_jip, tau_jip, c_kt, chi_jk, nb_clusters)
                         for i in range(1, size_of_run + 1)]
@@ -296,7 +310,7 @@ class Amstc:
         # here starts __createCentroids function
         centroidsFormulas=[]
         for j in range (0, len(self.__traces)):
-            centroidOfJ=is_run_centroid(j, self.__size_of_run, m0,
+            centroidOfJ=is_run_centroid(j, self.__size_of_run, m0,mf,
                                         self.__vars.getFunction(BOOLEAN_VAR_CHI_MARKINGS),
                                         self.__vars.getFunction(BOOLEAN_VAR_CHI_TRANSITIONS),
                                         self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T),
@@ -425,7 +439,7 @@ class Amstc:
         '''
         for j in range (0, len(self.__traces)):
             for i in range(1,self.__size_of_run+1):
-                self.__wcnf.append([-1 * self.__vars.get(BOOLEAN_VAR_DIFF, [j, i])], 1)
+                self.__wcnf.append([-1 * self.__vars.get(BOOLEAN_VAR_DIFF, [j, i])], 2)
 
     def __minimizingCommonTransitions(self):
         '''
@@ -435,7 +449,8 @@ class Amstc:
             for transition in self.__transitions:
                 t=self.__transitions.index(transition)
                 for k2 in (k1+1,self.__nb_clusters):
-                    self.__wcnf.append([-1 * self.__vars.get(BOOLEAN_VAR_COMMON_T, [k1, k2, t])], 1)
+                    self.__wcnf.append([-1 * self.__vars.get(BOOLEAN_VAR_COMMON_T, [k1, k2, t])], 2)
+                self.__wcnf.append([-1*self.__vars.get(BOOLEAN_VAR_K_CONTAINS_T,[k1,t])],1)
 
     def __minimizingUnclusteredTraces(self):
         '''
@@ -443,7 +458,7 @@ class Amstc:
         '''
         for j in range (0, len(self.__traces)):
             for k in range(0, len(self.__traces)):
-                self.__wcnf.append([self.__vars.get(BOOLEAN_VAR_J_IN_K, [j, k])], 1)
+                self.__wcnf.append([self.__vars.get(BOOLEAN_VAR_J_IN_K, [j, k])], 10)
 
     def getClustering(self):
         clusters={}
@@ -477,7 +492,39 @@ class Amstc:
 
         clustering=[]
         for i in clusters:
-            cluster=(set(clusters[i]),[])
+            pn_i=PetriNet()
+            for a in self.__arcs:
+                if type(a.source) is PetriNet.Transition and a.source in clusters[i] :
+                    p_i = a.target
+                    t_i = a.source
+                    if t_i not in pn_i.transitions:
+                        pn_i.transitions.add(t_i)
+                    if p_i not in pn_i.places:
+                        pn_i.places.add(p_i)
+                    a = petri.petrinet.PetriNet.Arc(t_i, p_i, 1)
+                    pn_i.arcs.add(a)
+                elif type(a.target) is PetriNet.Transition  and a.target in clusters[i]:
+                    p_i = a.source
+                    t_i = a.target
+                    if t_i not in pn_i.transitions:
+                        pn_i.transitions.add(t_i)
+                    if p_i not in pn_i.places:
+                        pn_i.places.add(p_i)
+                    a = petri.petrinet.PetriNet.Arc(p_i, t_i, 1)
+                    pn_i.arcs.add(a)
+            pn_i_f=deepcopy(pn_i)
+            m_i_0=Marking()
+            m_i_f=Marking()
+            for p in pn_i_f.places:
+                for n in self.__m0.keys():
+                    if n.name==p.name :
+                        m_i_0[p]=1
+                for n in self.__mf.keys():
+                    if n.name==p.name:
+                        m_i_f[p]=1
+            #vizu.apply(pn_i,self.__m0,self.__mf).view()
+            #pn_complet = deepcopy(pn_i)
+            cluster=((pn_i_f,m_i_0,m_i_f),[])
             if i in traces:
                 for j in traces[i]:
                     cluster[1].append([a for a in trs[int(j)]])
@@ -491,5 +538,20 @@ class Amstc:
         return self.__endComputationTime-self.__start
 
 
+import pm4py.algo.conformance.alignments.factory as alignments
+def samplingForAmstc(net, m0, mf, log,size_of_run, max_d, max_t, n, sample_size):
+    clusters={}
+    while True:
+        clustering = Amstc(net,m0,mf,log,size_of_run, max_d,max_t,n,nbTraces=sample_size)
+        result=clustering.getClustering()
+        if result[-1]<sample_size/2:
+            for (centroid,traces) in result:
+                if type(centroid) is PetriNet:
+                    ali=alignments.apply(log,centroid,m0,Marking)
+                    for a in ali:
+                        print(a)
 
+
+
+    return 0
 

@@ -26,8 +26,10 @@ from pm4py.objects import petri
 from pm4py.objects.log.util.log import project_traces
 from pm4py.visualization.petrinet import factory as vizu
 import numpy as np
+from random import sample
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"
 BOOLEAN_VAR_TRACES_MARKING= "m_jip"
+WAIT_LABEL_TRACE="w"
 
 NB_MAX_THREADS=50
 
@@ -136,7 +138,10 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
                     if t2.label==t.label:
                         other_transitions_with_same_label.append(t2)
                         transitions_already_done.append(t2)
-                index_of_t= pn_transitions.index(t.label)
+                if t.label in pn_transitions:
+                    index_of_t= pn_transitions.index(t.label)
+                else :
+                    index_of_t=pn.transition.index()
                 copie_transitions.remove(t.label)
                 or_formulas.append(And([tau_it([j,i, index_of_t])],[],[]))
                 implication=[]
@@ -205,7 +210,7 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
     # ......................................................................
     # here starts log_to_Petri_with_w function
     traces = list(project_traces(traces_xes))
-    traces = traces[:max_nbTraces] if max_nbTraces!=None else traces
+    traces = sample(traces,max_nbTraces) if max_nbTraces!=None else traces
     print(len(traces),"traces")
 
     # add boolean variables
@@ -220,6 +225,9 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
     for j in range(0,len(traces)):
         m0, mf, net_of_trace=create_pn_of_trace(j,traces[j],wait_transition_trace,wait_transition_model)
         places = [p for p in net_of_trace.places]
+        for t in net_of_trace.transitions:
+            if t.label not in transitions:
+                t.label=WAIT_LABEL_TRACE
         transitions_of_traces=[p for p in net_of_trace.transitions]
         # add alignment into formulas
         listOfPns.append(is_run_for_j(j,size_of_run, places, transitions,transitions_of_traces, m0, mf, marking_jia,
