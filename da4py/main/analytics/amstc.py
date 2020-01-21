@@ -539,19 +539,48 @@ class Amstc:
 
 
 import pm4py.algo.conformance.alignments.factory as alignments
-def samplingForAmstc(net, m0, mf, log,size_of_run, max_d, max_t, n, sample_size):
-    clusters={}
-    while True:
-        clustering = Amstc(net,m0,mf,log,size_of_run, max_d,max_t,n,nbTraces=sample_size)
+
+def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,maxCounter=2):
+    start=time.time()
+    clusters=[]
+    counter=0
+    nbOfIteration=0
+    while len(log._list)>0 and counter<maxCounter:
+        clustering = Amstc(net,m0,mf,log,size_of_run, max_d,max_t,m,nbTraces=sample_size,silent_label="tau")
+        nbOfIteration+=1
         result=clustering.getClustering()
-        if result[-1]<sample_size/2:
-            for (centroid,traces) in result:
-                if type(centroid) is PetriNet:
-                    ali=alignments.apply(log,centroid,m0,Marking)
-                    for a in ali:
-                        print(a)
+        print("> Found",len(result)-1,"centroids")
+        print(time.time()-start)
+        new_clustered_traces=[]
+        # if there is at least a clustered trace :
+        if len(result[-1][1])!=10:
+            for (tuple_centroid,traces) in result:
+                if type (tuple_centroid) is tuple :
+                    centroid, c_m0, c_mf= tuple_centroid
+                    traces_of_clusters=[]
+                    for l in log._list:
+                        ali=alignments.apply_trace(l,centroid,c_m0,c_mf)
+                        cost=ali['cost']
+                        if cost< 10000*(max_d+1):
+                            counter=-1
+                            new_clustered_traces.append(l)
+                            traces_of_clusters.append(l)
+                    if len(traces_of_clusters)>0:
+                        clusters.append((tuple_centroid,traces_of_clusters))
+                    else :
+                        counter+=1
 
+            # if we found at least a good centroid
+            if counter==-1:
+                log._list=list(set(log._list)-set(new_clustered_traces))
+                counter=0
+        else :
+            counter+=1
 
-
-    return 0
+    print("This clustering has been found in ",nbOfIteration," iterations and "+str(time.time()-start)+"secondes.")
+    for (centroid, traces)in clusters:
+        c, m0, mf=centroid
+        vizu.apply(c,m0,mf).view()
+        print(len(traces))
+    print(len(log._list),"traces are unclustered.")
 

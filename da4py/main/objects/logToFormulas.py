@@ -210,7 +210,7 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
     # ......................................................................
     # here starts log_to_Petri_with_w function
     traces = list(project_traces(traces_xes))
-    traces = sample(traces,max_nbTraces) if max_nbTraces!=None else traces
+    traces = sample(traces,max_nbTraces) if max_nbTraces!=None and len(traces)>max_nbTraces else traces
     print(len(traces),"traces")
 
     # add boolean variables
