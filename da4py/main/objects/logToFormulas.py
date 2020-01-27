@@ -49,7 +49,8 @@ def log_to_SAT(traces_xes, transitions, variablesGenerator, size_of_run, wait_tr
     '''
     traces_multiples = project_traces(traces_xes)
     print("traces m",traces_multiples)
-    traces=list(np.unique(traces_multiples))
+    #traces=list(np.unique(traces_multiples))
+    traces=traces_multiples
     print("uniques",traces)
     traces = traces[:max_nbTraces] if max_nbTraces!=None else traces
     variablesGenerator.add(label_l,[(0,len(traces)),(1,size_of_run+1),(0,len(transitions))])
@@ -129,6 +130,7 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
         # lazy comment : this verifies that alphabet is complet : all action not executed has to be taken into account
         or_formulas = []
         formulas = []
+        label_transitions=[t.label for t in pn_transitions]
         copie_transitions=[t for t in pn_transitions]
         transitions_already_done=[]
         for t in trace_transitions:
@@ -138,11 +140,11 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
                     if t2.label==t.label:
                         other_transitions_with_same_label.append(t2)
                         transitions_already_done.append(t2)
-                if t.label in pn_transitions:
-                    index_of_t= pn_transitions.index(t.label)
+                if t.label in label_transitions:
+                    index_of_t= label_transitions.index(t.label)
                 else :
-                    index_of_t=pn.transition.index()
-                copie_transitions.remove(t.label)
+                    index_of_t=None# should never happen
+                copie_transitions.remove(pn_transitions[(label_transitions.index(t.label))])
                 or_formulas.append(And([tau_it([j,i, index_of_t])],[],[]))
                 implication=[]
                 for t2 in other_transitions_with_same_label:
@@ -178,7 +180,7 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
                                             And([], [m_ip([j, i, trace_places.index(p)]), m_ip([j, i - 1, trace_places.index(p)])], [])]))
         return And([], [], formulas)
 
-    def create_pn_of_trace(j,trace, wait_transition_trace, wait_transition_model):
+    def create_pn_of_trace(j,size_of_run, trace, wait_transition_trace, wait_transition_model):
         '''
         Create sequential petri net of trace.
         :param j (int):
@@ -191,7 +193,7 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
         net_of_trace.places.add(place_prec)
         m0 = petri.petrinet.Marking()
         m0[place_prec]=1
-        for a in range (0,len(trace)):
+        for a in range (0,min(size_of_run, len(trace))):
             place_suiv=petri.petrinet.PetriNet.Place(a)
             net_of_trace.places.add(place_suiv)
             transition=petri.petrinet.PetriNet.Transition(trace[a]+str(a), trace[a])
@@ -211,11 +213,10 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
     # here starts log_to_Petri_with_w function
     traces = list(project_traces(traces_xes))
     traces = sample(traces,max_nbTraces) if max_nbTraces!=None and len(traces)>max_nbTraces else traces
-    print(len(traces),"traces")
 
     # add boolean variables
     vars.add(label_l, [(0, len(traces)), (1, size_of_run + 1), (0, len(pn_transitions))])
-    vars.add(label_m, [(0, len(traces)), (0, size_of_run + 1), (0, len(pn_transitions))])
+    vars.add(label_m, [(0, len(traces)), (0, size_of_run + 1), (0, size_of_run + 1)])
     transitions = [t.label for t in pn_transitions]
     lambda_jia=vars.getFunction(label_l)
     marking_jia=vars.getFunction(label_m)
@@ -223,14 +224,15 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
     # each trace becomes a sequential petri net with a wait transition representing the log moves
     listOfPns=[]
     for j in range(0,len(traces)):
-        m0, mf, net_of_trace=create_pn_of_trace(j,traces[j],wait_transition_trace,wait_transition_model)
+        print(traces[j])
+        m0, mf, net_of_trace=create_pn_of_trace(j,size_of_run,traces[j],wait_transition_trace,wait_transition_model)
         places = [p for p in net_of_trace.places]
         for t in net_of_trace.transitions:
             if t.label not in transitions:
                 t.label=WAIT_LABEL_TRACE
         transitions_of_traces=[p for p in net_of_trace.transitions]
         # add alignment into formulas
-        listOfPns.append(is_run_for_j(j,size_of_run, places, transitions,transitions_of_traces, m0, mf, marking_jia,
+        listOfPns.append(is_run_for_j(j,size_of_run, places, pn_transitions,transitions_of_traces, m0, mf, marking_jia,
                                       lambda_jia,False))
 
     return listOfPns,traces

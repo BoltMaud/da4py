@@ -67,7 +67,7 @@ class Amstc:
         self.__size_of_run=size_of_run
         self.__copy_net(pn,m0,mf)
         self.__nb_clusters=nb_clusters
-        self.__silent_transititons=[t for t in self.__transitions if t.label==silent_label]
+        self.__silent_transititons=[t for t in self.__transitions if  t.label is None or silent_label in t.label ]
         # add wait transitions that represents log and model move for alignment
         self.__addWaitTransitions(self.__pn,self.__mf)
         self.__start=time.time()
@@ -486,6 +486,8 @@ class Amstc:
                 j= self.__vars.getVarName(var).split("[")[1].split(",")[0]
                 i=(self.__vars.getVarName(var).split("]")[0].split(",")[1])
                 a=(self.__vars.getVarName(var).split("]")[0].split(",")[2])
+                print(str(self.__transitions[int(a)]))
+
                 if int(j) not in trs.keys():
                     trs[int(j)]=[]
                 trs[int(j)].append(str(self.__transitions[int(a)]))
@@ -539,33 +541,48 @@ class Amstc:
 
 
 import pm4py.algo.conformance.alignments.factory as alignments
-
-def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,maxCounter=2):
+from pm4py.objects.log.util import xes as xes_util
+import editdistance
+def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,maxCounter=2,alpha=None,silent_label="tau"):
     start=time.time()
     clusters=[]
     counter=0
     nbOfIteration=0
     while len(log._list)>0 and counter<maxCounter:
-        clustering = Amstc(net,m0,mf,log,size_of_run, max_d,max_t,m,nbTraces=sample_size,silent_label="tau")
+        clustering = Amstc(net,m0,mf,log,size_of_run, max_d,max_t,m,nbTraces=sample_size,silent_label=silent_label)
         nbOfIteration+=1
         result=clustering.getClustering()
         print("> Found",len(result)-1,"centroids")
         print(time.time()-start)
         new_clustered_traces=[]
         # if there is at least a clustered trace :
-        if len(result[-1][1])!=10:
+        if len(result[-1][1])!=sample_size:
             for (tuple_centroid,traces) in result:
+                print(tuple_centroid)
                 if type (tuple_centroid) is tuple :
                     centroid, c_m0, c_mf= tuple_centroid
+                    vizu.apply(centroid,c_m0,c_mf).view()
                     traces_of_clusters=[]
-                    for l in log._list:
-                        ali=alignments.apply_trace(l,centroid,c_m0,c_mf)
-                        cost=ali['cost']
-                        if cost< 10000*(max_d+1):
-                            counter=-1
-                            new_clustered_traces.append(l)
-                            traces_of_clusters.append(l)
+                    if alpha is None:
+                        for l in log._list:
+                            ali=alignments.apply_trace(l,centroid,c_m0,c_mf)
+                            cost=ali['cost']
+                            print(ali)
+                            if cost< 10000*(max_d+1):
+                                counter=-1
+                                new_clustered_traces.append(l)
+                                traces_of_clusters.append(l)
+                    else : # alpha is not None
+                        for l in log._list:
+                            for clustered in traces:
+                                transformed_l =list(map(lambda e: e[xes_util.DEFAULT_NAME_KEY], l))
+                                print(clustered,transformed_l)
+                                if editdistance.eval(clustered,transformed_l) <(alpha+1):
+                                    counter=-1
+                                    new_clustered_traces.append(l)
+                                    traces_of_clusters.append(l)
                     if len(traces_of_clusters)>0:
+                        print(traces_of_clusters)
                         clusters.append((tuple_centroid,traces_of_clusters))
                     else :
                         counter+=1
