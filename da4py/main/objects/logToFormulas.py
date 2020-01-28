@@ -213,7 +213,7 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
     # here starts log_to_Petri_with_w function
     traces = list(project_traces(traces_xes))
     traces = sample(traces,max_nbTraces) if max_nbTraces!=None and len(traces)>max_nbTraces else traces
-
+    print(traces)
     # add boolean variables
     vars.add(label_l, [(0, len(traces)), (1, size_of_run + 1), (0, len(pn_transitions))])
     vars.add(label_m, [(0, len(traces)), (0, size_of_run + 1), (0, size_of_run + 1)])
@@ -224,7 +224,6 @@ def log_to_Petri_with_w(traces_xes, pn_transitions, vars, size_of_run, wait_tran
     # each trace becomes a sequential petri net with a wait transition representing the log moves
     listOfPns=[]
     for j in range(0,len(traces)):
-        print(traces[j])
         m0, mf, net_of_trace=create_pn_of_trace(j,size_of_run,traces[j],wait_transition_trace,wait_transition_model)
         places = [p for p in net_of_trace.places]
         for t in net_of_trace.transitions:

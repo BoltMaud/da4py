@@ -35,7 +35,8 @@ BOOLEAN_VAR_J_IN_K="chi_jk"
 BOOLEAN_VAR_TRACES_ACTIONS="lambda_jia"
 BOOLEAN_VAR_CHI_MARKINGS="m_chijip"
 BOOLEAN_VAR_CHI_TRANSITIONS="tau_chijia"
-BOOLEAN_VAR_DIFF= "diff_ji"
+BOOLEAN_VAR_DIFF_m= "diffm_ji"
+BOOLEAN_VAR_DIFF_l= "diffl_ji"
 BOOLEAN_VAR_K_CONTAINS_T= "c_kt"
 BOOLEAN_VAR_COMMON_T="common_kkt"
 BOOLEAN_VAR_J_CLUSTERISED="inC_j"
@@ -135,7 +136,8 @@ class Amstc:
         centroidsFormulasList = self.__createCentroids(m0,mf)
         # formula that describes maximal distance
         diffTracesCentroids=self.__getDiffTracesCentroids(self.__vars.getFunction(BOOLEAN_VAR_CHI_TRANSITIONS),
-                                                          self.__vars.getFunction(BOOLEAN_VAR_DIFF),
+                                                          self.__vars.getFunction(BOOLEAN_VAR_DIFF_l),
+                                                          self.__vars.getFunction(BOOLEAN_VAR_DIFF_m),
                                                           self.__vars.getFunction(BOOLEAN_VAR_TRACES_ACTIONS))
 
         # formula that create BOOLEAN_VAR_COMMON_T variables
@@ -160,7 +162,9 @@ class Amstc:
         '''
         This function creates the boolean variables needed in this class.
         '''
-        self.__vars.add(BOOLEAN_VAR_DIFF, [(0, len(self.__traces)), (1, self.__size_of_run + 1)])
+        self.__vars.add(BOOLEAN_VAR_DIFF_m, [(0, len(self.__traces)), (1, self.__size_of_run + 1)])
+        self.__vars.add(BOOLEAN_VAR_DIFF_l, [(0, len(self.__traces)), (1, self.__size_of_run + 1)])
+
         self.__vars.add(BOOLEAN_VAR_J_IN_K, [(0, len(self.__traces)), (0, self.__nb_clusters)])
         self.__vars.add(BOOLEAN_VAR_J_CLUSTERISED, [(0, len(self.__traces))])
         self.__vars.add(BOOLEAN_VAR_CHI_MARKINGS, [(0, len(self.__traces)), (0, self.__size_of_run + 1),
@@ -320,7 +324,7 @@ class Amstc:
             centroidsFormulas.append(centroidIfClusterised)
         return centroidsFormulas
 
-    def __getDiffTracesCentroids(self, chi_jia, diff_ji, lambda_jia):
+    def __getDiffTracesCentroids(self, chi_jia, diffl_ji, diffm_ji, lambda_jia):
         '''
         This function that defines the difference between the traces and its centroid and calls
         __maxDiffTracesCentroids().
@@ -337,10 +341,19 @@ class Amstc:
                 for t in range(0,len(self.__transitions)):
                     # if silent transition : diffjit is false
                     if self.__transitions[t] in self.__silent_transititons:
-                        diffjit=Or([],[chi_jia([j, i, t]), diff_ji([j, i])], [])
+                        indexOfWaitModel=self.__transitions.index(self.__wait_transition_model)
+                        indexOfWaitTrace=self.__transitions.index(self.__wait_transition_trace)
+                        diffjit=Or([diffl_ji([j, i]),lambda_jia([j,i,indexOfWaitModel]),
+                                    lambda_jia([j,i,indexOfWaitTrace])],[chi_jia([j, i, t])], [])
                     # chi_jia => lambda_jia or diff_ji
+                    elif self.__transitions[t]==self.__wait_transition_model:
+                        diffjit=Or([diffl_ji([j, i]),lambda_jia([j, i, t])],[chi_jia([j, i, t])], [])
+                    elif self.__transitions[t]==self.__wait_transition_trace:
+                        diffjit=Or([diffm_ji([j, i])],[chi_jia([j, i, t])], [])
                     else :
-                        diffjit=Or([diff_ji([j, i]),lambda_jia([j, i, t])],[chi_jia([j, i, t])], [])
+                        diffjit=Or([lambda_jia([j, i, t])],[chi_jia([j, i, t])], [
+                            And([diffl_ji([j, i]),diffm_ji([j, i])],[],[])
+                        ])
                     aDiffPerInstant.append(diffjit)
             diffPerJ=And([],[],aDiffPerInstant)
             formulas.append(diffPerJ)
@@ -358,15 +371,20 @@ class Amstc:
         '''
         # this function uses combinations of itertools to get all the combinations : this is better than parameter
         # at_most of pysat library
-        list_to_size_of_run= list(range(1,self.__size_of_run+1))
-        max_distance=self.__size_of_run- self.__max_d
+        list_to_size_of_run= list(range(1,(self.__size_of_run*2)+1))
+        max_distance=(self.__size_of_run*2)- self.__max_d
         # IDEA : there are at least max_distance number of false variables
         combinaisons_of_instants=list(itertools.combinations(list_to_size_of_run,max_distance))
         for j in range (0, len(self.__traces)):
             distFalseVariables=[]
             for instants in combinaisons_of_instants:
-                distFalseVariables.append(And([],[self.__vars.get(BOOLEAN_VAR_DIFF, [j, i])
-                                            for i in list(instants)],[]))
+                list_distances=[]
+                for i in instants:
+                    if i <=self.__size_of_run :
+                        list_distances.append(self.__vars.get(BOOLEAN_VAR_DIFF_l, [j,i]))
+                    else :
+                        list_distances.append(self.__vars.get(BOOLEAN_VAR_DIFF_l, [j,(i-self.__size_of_run)]))
+                distFalseVariables.append(And([],list_distances,[]))
             formulas.append(Or([],[],distFalseVariables))
 
     def __commonTransitions(self, common_kkt, ckt):
@@ -439,7 +457,8 @@ class Amstc:
         '''
         for j in range (0, len(self.__traces)):
             for i in range(1,self.__size_of_run+1):
-                self.__wcnf.append([-1 * self.__vars.get(BOOLEAN_VAR_DIFF, [j, i])], 2)
+                self.__wcnf.append([-1 * self.__vars.get(BOOLEAN_VAR_DIFF_l, [j, i])], 2)
+                self.__wcnf.append([-1 * self.__vars.get(BOOLEAN_VAR_DIFF_m, [j, i])], 2)
 
     def __minimizingCommonTransitions(self):
         '''
@@ -466,6 +485,8 @@ class Amstc:
         trs={}
         clusterized=[]
         for var in self.__model:
+            if self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith("diff"):
+                print(self.__vars.getVarName(var))
             if self.__vars.getVarName(var) != None and self.__vars.getVarName(var).startswith(
                     BOOLEAN_VAR_K_CONTAINS_T):
                 k= self.__vars.getVarName(var).split("[")[1].split(",")[0]
@@ -486,8 +507,6 @@ class Amstc:
                 j= self.__vars.getVarName(var).split("[")[1].split(",")[0]
                 i=(self.__vars.getVarName(var).split("]")[0].split(",")[1])
                 a=(self.__vars.getVarName(var).split("]")[0].split(",")[2])
-                print(str(self.__transitions[int(a)]))
-
                 if int(j) not in trs.keys():
                     trs[int(j)]=[]
                 trs[int(j)].append(str(self.__transitions[int(a)]))
@@ -556,35 +575,35 @@ def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,
         print(time.time()-start)
         new_clustered_traces=[]
         # if there is at least a clustered trace :
-        if len(result[-1][1])!=sample_size:
+        if len(result)-1>0:
             for (tuple_centroid,traces) in result:
-                print(tuple_centroid)
                 if type (tuple_centroid) is tuple :
                     centroid, c_m0, c_mf= tuple_centroid
                     vizu.apply(centroid,c_m0,c_mf).view()
+                    print("clustered",traces)
+                    input("wait")
                     traces_of_clusters=[]
                     if alpha is None:
                         for l in log._list:
                             ali=alignments.apply_trace(l,centroid,c_m0,c_mf)
                             cost=ali['cost']
-                            print(ali)
-                            if cost< 10000*(max_d+1):
+                            if cost< 10000*((max_d+1)):
                                 counter=-1
                                 new_clustered_traces.append(l)
                                 traces_of_clusters.append(l)
                     else : # alpha is not None
+                        cleaned_traces= [x for x in traces if x != WAIT_LABEL_TRACE and x!=WAIT_LABEL_MODEL]
                         for l in log._list:
-                            for clustered in traces:
+                            for clustered in cleaned_traces:
                                 transformed_l =list(map(lambda e: e[xes_util.DEFAULT_NAME_KEY], l))
-                                print(clustered,transformed_l)
                                 if editdistance.eval(clustered,transformed_l) <(alpha+1):
                                     counter=-1
                                     new_clustered_traces.append(l)
                                     traces_of_clusters.append(l)
                     if len(traces_of_clusters)>0:
-                        print(traces_of_clusters)
                         clusters.append((tuple_centroid,traces_of_clusters))
                     else :
+                        print("no traces")
                         counter+=1
 
             # if we found at least a good centroid
