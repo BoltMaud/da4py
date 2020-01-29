@@ -562,7 +562,7 @@ class Amstc:
 import pm4py.algo.conformance.alignments.factory as alignments
 from pm4py.objects.log.util import xes as xes_util
 import editdistance
-def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,maxCounter=2,alpha=None,silent_label="tau"):
+def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,maxCounter=2,editDistance=True,silent_label="tau"):
     start=time.time()
     clusters=[]
     counter=0
@@ -573,43 +573,41 @@ def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,
         result=clustering.getClustering()
         print("> Found",len(result)-1,"centroids")
         print(time.time()-start)
-        new_clustered_traces=[]
         # if there is at least a clustered trace :
         if len(result)-1>0:
             for (tuple_centroid,traces) in result:
+                new_clustered_traces=[]
                 if type (tuple_centroid) is tuple :
                     centroid, c_m0, c_mf= tuple_centroid
-                    vizu.apply(centroid,c_m0,c_mf).view()
-                    print("clustered",traces)
-                    input("wait")
                     traces_of_clusters=[]
-                    if alpha is None:
+                    if editDistance:
                         for l in log._list:
-                            ali=alignments.apply_trace(l,centroid,c_m0,c_mf)
-                            cost=ali['cost']
-                            if cost< 10000*((max_d+1)):
-                                counter=-1
-                                new_clustered_traces.append(l)
-                                traces_of_clusters.append(l)
-                    else : # alpha is not None
-                        cleaned_traces= [x for x in traces if x != WAIT_LABEL_TRACE and x!=WAIT_LABEL_MODEL]
-                        for l in log._list:
-                            for clustered in cleaned_traces:
-                                transformed_l =list(map(lambda e: e[xes_util.DEFAULT_NAME_KEY], l))
-                                if editdistance.eval(clustered,transformed_l) <(alpha+1):
+                            transformed_l =list(map(lambda e: e[xes_util.DEFAULT_NAME_KEY], l))
+                            for clustered in traces:
+                                cleaned_clustered= [x for x in clustered if x != WAIT_LABEL_TRACE and x!=WAIT_LABEL_MODEL]
+                                if editdistance.eval(cleaned_clustered,transformed_l) <(max_d+1):
                                     counter=-1
                                     new_clustered_traces.append(l)
                                     traces_of_clusters.append(l)
+                    log._list=list(set(log._list)-set(new_clustered_traces))
+                    for l in log._list:
+                        ali=alignments.apply_trace(l,centroid,c_m0,c_mf)
+                        cost=ali['cost']
+                        if cost< 10000*((max_d+1)):
+                            counter=-1
+                            new_clustered_traces.append(l)
+                            traces_of_clusters.append(l)
+                    log._list=list(set(log._list)-set(new_clustered_traces))
                     if len(traces_of_clusters)>0:
                         clusters.append((tuple_centroid,traces_of_clusters))
                     else :
                         print("no traces")
-                        counter+=1
 
             # if we found at least a good centroid
             if counter==-1:
-                log._list=list(set(log._list)-set(new_clustered_traces))
                 counter=0
+            else:
+                counter+=1
         else :
             counter+=1
 
