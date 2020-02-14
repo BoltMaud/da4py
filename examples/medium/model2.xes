@@ -285,5 +285,5 @@
                                                     			<string key="lifecycle:transition" value="complete"/>
                                                     			<date key="time:timestamp" value="2000-01-01T01:00:36.000+01:00"/>
                                                     		</event>
-                                                    	</trace>
-</log>
+                                                    		</trace>
+                                                   </log>

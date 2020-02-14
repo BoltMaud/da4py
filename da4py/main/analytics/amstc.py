@@ -12,16 +12,23 @@
 
 The amstc.py file implements the subnet based clustering presented in the following paper.
 
-Scientific paper : _Generalized Alignment-Based Trace Clustering of Process Behavior_
+Scientific papers : _Generalized Alignment-Based Trace Clustering of Process Behavior_
+                    _Model-based Trace Variants_
 By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
 import time
 import itertools
+import warnings
 from copy import deepcopy
 
+from pm4py.algo.filtering.log.variants.variants_filter import get_variants
 from pm4py.objects import petri
+from pm4py.objects.log.util.log import project_traces
 from pm4py.visualization.petrinet import factory as vizu
+import pm4py.algo.conformance.alignments.factory as alignments
+from pm4py.objects.log.util import xes as xes_util
+import editdistance
 
 from da4py.main.utils.variablesGenerator import VariablesGenerator
 from pm4py.objects.petri.petrinet import PetriNet, Marking
@@ -47,10 +54,10 @@ WAIT_LABEL_MODEL="ww"
 class Amstc:
     '''
     Alignment and Model Subnet-based Trace Clustering
-    Creates clusters depending on subnets
+    Creates clusters based on subnets
     '''
 
-    def __init__(self, pn, m0, mf, traces_xes, size_of_run, max_d, max_t, nb_clusters,silent_label=None, nbTraces=20):
+    def __init__(self, pn, m0, mf, traces_xes, size_of_run, max_d, max_t, nb_clusters,silent_label="tau", nbTraces=20):
         '''
         Initialization of the object that directly launches the clustering
         :param pn (Petrinet)
@@ -146,9 +153,6 @@ class Amstc:
         # formula that describes that a trace belongs to at most one cluster
         aClusterMax=self.__tracesInAClusterOnly(self.__vars.getFunction(BOOLEAN_VAR_J_CLUSTERISED),
                                                 self.__vars.getFunction(BOOLEAN_VAR_J_IN_K))
-        # formula that describes maximal number of transitions per centroids
-        #numberTransitionsPerCluster=self.__maxTransitionsPerCluster(self.__vars.getFunction(BOOLEAN_VAR_K_CONTAINS_T))
-
         # concat the formula
         full_formula = And([], [], log_to_PN_w_formula + centroidsFormulasList + diffTracesCentroids +
                             listOfCommonTransitions + aClusterMax )
@@ -351,9 +355,14 @@ class Amstc:
                     elif self.__transitions[t]==self.__wait_transition_trace:
                         diffjit=Or([diffm_ji([j, i])],[chi_jia([j, i, t])], [])
                     else :
-                        diffjit=Or([lambda_jia([j, i, t])],[chi_jia([j, i, t])], [
-                            And([diffl_ji([j, i]),diffm_ji([j, i])],[],[])
-                        ])
+                        indexOfWaitTrace=self.__transitions.index(self.__wait_transition_trace)
+                        diffjit=Or([],[],[Or([lambda_jia([j, i, t])],
+                                             [chi_jia([j, i, t])],[
+                                             And([diffl_ji([j, i]),diffm_ji([j, i])],[],[])
+                                             ]),
+                                          And([diffm_ji([j, i]),lambda_jia([j,i,indexOfWaitTrace]),chi_jia([j, i, t])],
+                                             [],[])
+                                          ])
                     aDiffPerInstant.append(diffjit)
             diffPerJ=And([],[],aDiffPerInstant)
             formulas.append(diffPerJ)
@@ -383,7 +392,7 @@ class Amstc:
                     if i <=self.__size_of_run :
                         list_distances.append(self.__vars.get(BOOLEAN_VAR_DIFF_l, [j,i]))
                     else :
-                        list_distances.append(self.__vars.get(BOOLEAN_VAR_DIFF_l, [j,(i-self.__size_of_run)]))
+                        list_distances.append(self.__vars.get(BOOLEAN_VAR_DIFF_m, [j,(i-self.__size_of_run)]))
                 distFalseVariables.append(And([],list_distances,[]))
             formulas.append(Or([],[],distFalseVariables))
 
@@ -404,28 +413,11 @@ class Amstc:
                     listOfCommunTransitionsFormulas.append(haveATransitionInCommon)
         return listOfCommunTransitionsFormulas
 
-    def __maxTransitionsPerCluster(self, c_kt):
+    def __maxTransitionsPerClusterAtMost(self,c_kt):
         '''
         This function uses self.__max_t that determines the maximal number of transition per centroid.
-        Idea of the threshold : there are at least N transitions that aren't in centroid.
-        :param formulas (list of formula to fill)
         :return: void
         '''
-        # this function uses combinations of itertools to get all the combinations : this is better than parameter
-        # at_most of pysat library
-        listOfAnd=[]
-        list_of_transitions_indexes= [t for t in range(0,len(self.__transitions))
-                                        if self.__transitions[t]!=self.__wait_transition_model]
-        max_tFalse=len(self.__transitions)- self.__max_t-1
-        combinaisons_of_transtions=list(itertools.combinations(list_of_transitions_indexes,max_tFalse))
-        for k in range (0, self.__nb_clusters):
-            listOfAndNeg=[]
-            for transitions_indexes in combinaisons_of_transtions:
-                listOfAndNeg.append(And([],[c_kt([k, i])for i in list(transitions_indexes)],[]))
-            listOfAnd.append(Or([],[],listOfAndNeg))
-        return listOfAnd
-
-    def __maxTransitionsPerClusterAtMost(self,c_kt):
         for k1 in range (0,self.__nb_clusters):
             self.__wcnf.append([[c_kt([k1,t])
                                  for t in range (0,len(self.__transitions))
@@ -477,9 +469,14 @@ class Amstc:
         '''
         for j in range (0, len(self.__traces)):
             for k in range(0, len(self.__traces)):
-                self.__wcnf.append([self.__vars.get(BOOLEAN_VAR_J_IN_K, [j, k])], 10)
+                self.__wcnf.append([self.__vars.get(BOOLEAN_VAR_J_IN_K, [j, k])], 100)
 
     def getClustering(self):
+        '''
+        This function reads the result of the SAT problem. Very dirty function... sorry.
+        From a Boolean solution of variables, find the informative ones and extract results.
+        :return: a simple dictionary of list of letter and Petri nets (centroids)
+        '''
         clusters={}
         traces={}
         trs={}
@@ -543,14 +540,11 @@ class Amstc:
                 for n in self.__mf.keys():
                     if n.name==p.name:
                         m_i_f[p]=1
-            #vizu.apply(pn_i,self.__m0,self.__mf).view()
-            #pn_complet = deepcopy(pn_i)
             cluster=((pn_i_f,m_i_0,m_i_f),[])
             if i in traces:
                 for j in traces[i]:
                     cluster[1].append([a for a in trs[int(j)]])
             clustering.append(cluster)
-
         unclusterized = [t for (i,t) in enumerate(self.__traces) if i not in clusterized]
         clustering.append(({"Unclusterized"},unclusterized))
         return  clustering
@@ -558,12 +552,127 @@ class Amstc:
     def getTime(self):
         return self.__endComputationTime-self.__start
 
+def samplingVariantsForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,maxCounter=2,editDistance=True,silent_label="tau", debug=None):
+    '''
+    This function computes a AMSTC with a sampling method. See scientific paper : Model-based Trace Variants
+    :param net (Petri) : process model
+    :param m0 (Marking) : initial marking
+    :param mf (Marking) : final marking
+    :param log (Log) : log traces
+    :param sample_size (int) : number of traces that will be used in the complete AMSTC
+    :param size_of_run (int) : length of the run in the process model
+    :param max_d (int) : maximal distance between centroids and traces
+    :param max_t (int) : maximal number of transitions in a cluster
+    :param m (int) : number of cluster
+    :param maxCounter (int) : number of trials without results in the sampling method
+    :param editDistance (bool) : use of edit distance between traces
+    :param silent_label (string) : count 0 every transition that contains its substring
+    :return:
+    '''
+    def logAlignToCluster(tuple_centroid, traces, variants,editDistance,max_d,counter):
+        '''
+        Private function of the sampling method with variants. From a centroid, cluster all the traces that
+        can be aligned for a cost <= max_d
+        :param tuple_centroid: (net, m0, mf)
+        :param traces: list of log traces
+        :param variants: dictionary of variants
+        :param editDistance (boolean) : use or not the edit distance heuristic
+        :param max_d (int): maximal distance between the traces and centroids (or casual distance !!)
+        :param counter (int): number of trials
+        :return:
+        '''
+        centroid, c_m0, c_mf= tuple_centroid
+        traces_of_clusters=[]
+        used_variants=[]
+        cleaned_clustered_traces=[]
+        for clustered in traces:
+            # remove "w" and "ww" labels of SAT results
+            cleaned_clustered_traces.append([x for x in clustered if x != WAIT_LABEL_TRACE and x!=WAIT_LABEL_MODEL])
+        for l in variants:
+            bool_clustered=False
+            if editDistance:
+                # format is not the same due to the SAT results
+                transformed_l =list(map(lambda e: e[xes_util.DEFAULT_NAME_KEY], variants[l][0]))
+                # align clustered traces and entire log traces with edit distance
+                for clustered in cleaned_clustered_traces:
+                    if editdistance.eval(clustered,transformed_l) <(max_d+1):
+                        counter=-1
+                        traces_of_clusters+=variants[l]
+                        used_variants.append(l)
+                        bool_clustered=True
+                        break
+            # align centroid and entire log with alignments
+            if not bool_clustered:
+                alignment=alignments.apply_trace(variants[l][0],centroid,c_m0,c_mf)
+                if alignment['cost']< 10000*((max_d+1)):
+                    counter=-1
+                    traces_of_clusters+=variants[l]
+                    used_variants.append(l)
+        return traces_of_clusters,used_variants,cleaned_clustered_traces, counter
 
-import pm4py.algo.conformance.alignments.factory as alignments
-from pm4py.objects.log.util import xes as xes_util
-import editdistance
+    # ---------------------------------------------------------------------------------------------------------------
+    start,totalAlign = time.clock(), 0
+    counter, nbOfIteration = 0, 0
+    clusters=[]
+    variants=get_variants(log)
+    while len(log._list)>0 and counter<maxCounter:
+        clustering = Amstc(net,m0,mf,log,size_of_run, max_d,max_t,m,nbTraces=sample_size,silent_label=silent_label)
+        nbOfIteration+=1
+        result=clustering.getClustering()
+
+        if debug is not None:
+            print("> Found",len(result)-1,"centroids")
+            print(time.clock()-start)
+
+        # if there is at least a clustered trace :
+        if len(result)-1>0:
+            for (tuple_centroid,traces) in result:
+                if type (tuple_centroid) is tuple :
+
+                    # launches logAlignToCluster function that uses trace variant alignments to cluster
+                    startAlign=time.clock()
+                    traces_of_clusters, used_variants,cleaned_clustered_traces, counter=\
+                        logAlignToCluster(tuple_centroid, traces, variants,editDistance, max_d,counter)
+                    totalAlign+=(time.clock()-startAlign)
+                    for v in used_variants:
+                        del variants[v]
+                    log._list=list(set(log._list)-set(traces_of_clusters))
+
+                    # create the cluster
+                    if len(traces_of_clusters)>0:
+                        clusters.append((tuple_centroid,traces_of_clusters))
+            # if we found at least a good centroid
+            if counter==-1:
+                counter=0
+            else:
+                counter+=1
+        else :
+            counter+=1
+
+    if debug is not None:
+        print("This clustering has been found in ",nbOfIteration," iterations and "+str(time.clock()-start)+"secondes.")
+        print(str(totalAlign)+" secondes have been used to align.")
+        for (centroid, traces)in clusters:
+            print(len(traces))
+            if type(centroid) is tuple:
+                net, m0,mf=centroid
+                #vizu.apply(net, m0, mf).view()
+                #input("enter..")
+        print(len(log._list),"traces are unclustered.")
+
+    return clusters
+
+
+
+
+
 def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,maxCounter=2,editDistance=True,silent_label="tau"):
+    '''
+    DEPRECATED FUNCTION!! It is still just available for the experiment of the paper Model based trace variants
+    '''
+    warnings.warn("This function is Deprecated. Please use samplingVariantsForAmstc().", DeprecationWarning,stacklevel=2)
     start=time.time()
+    totalAlign=0
     clusters=[]
     counter=0
     nbOfIteration=0
@@ -576,32 +685,35 @@ def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,
         # if there is at least a clustered trace :
         if len(result)-1>0:
             for (tuple_centroid,traces) in result:
-                new_clustered_traces=[]
                 if type (tuple_centroid) is tuple :
+
                     centroid, c_m0, c_mf= tuple_centroid
                     traces_of_clusters=[]
-                    if editDistance:
-                        for l in log._list:
-                            transformed_l =list(map(lambda e: e[xes_util.DEFAULT_NAME_KEY], l))
-                            for clustered in traces:
-                                cleaned_clustered= [x for x in clustered if x != WAIT_LABEL_TRACE and x!=WAIT_LABEL_MODEL]
-                                if editdistance.eval(cleaned_clustered,transformed_l) <(max_d+1):
-                                    counter=-1
-                                    new_clustered_traces.append(l)
-                                    traces_of_clusters.append(l)
-                    log._list=list(set(log._list)-set(new_clustered_traces))
+                    cleaned_clustered_traces=[]
+
+                    startAlign=time.time()
+                    for clustered in traces:
+                        cleaned_clustered_traces.append([x for x in clustered if x != WAIT_LABEL_TRACE and x!=WAIT_LABEL_MODEL])
                     for l in log._list:
-                        ali=alignments.apply_trace(l,centroid,c_m0,c_mf)
-                        cost=ali['cost']
-                        if cost< 10000*((max_d+1)):
-                            counter=-1
-                            new_clustered_traces.append(l)
-                            traces_of_clusters.append(l)
-                    log._list=list(set(log._list)-set(new_clustered_traces))
+                        bool_clustered=False
+                        if editDistance:
+                            transformed_l =list(map(lambda e: e[xes_util.DEFAULT_NAME_KEY], l))
+                            for clustered in cleaned_clustered_traces:
+                                if editdistance.eval(clustered,transformed_l) <(max_d+1):
+                                    counter=-1
+                                    traces_of_clusters.append(l)
+                                    bool_clustered=True
+                                    break
+                        if not bool_clustered:
+                            alignment=alignments.apply_trace(l,centroid,c_m0,c_mf)
+                            if alignment['cost']< 10000*((max_d+1)):
+                                counter=-1
+                                traces_of_clusters.append(l)
+                    totalAlign+=(time.time()-startAlign)
+                    log._list=list(set(log._list)-set(traces_of_clusters))
+
                     if len(traces_of_clusters)>0:
                         clusters.append((tuple_centroid,traces_of_clusters))
-                    else :
-                        print("no traces")
 
             # if we found at least a good centroid
             if counter==-1:
@@ -610,11 +722,11 @@ def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,
                 counter+=1
         else :
             counter+=1
-
     print("This clustering has been found in ",nbOfIteration," iterations and "+str(time.time()-start)+"secondes.")
+    print(str(totalAlign)+" secondes have been used to align.")
     for (centroid, traces)in clusters:
-        c, m0, mf=centroid
-        vizu.apply(c,m0,mf).view()
         print(len(traces))
     print(len(log._list),"traces are unclustered.")
+
+
 
