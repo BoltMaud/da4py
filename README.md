@@ -13,10 +13,7 @@ The project is a translation of the Ocaml version `darksider` created by Thomas 
 
 - _Encoding Conformance Checking Artefacts in SAT_ by Mathilde Boltenhagen, Thomas Chatain, Josep Carmona <br>
 - _Anti-alignments in conformance checking–the dark side of process models_ by Thomas Chatain, Josep Carmona
-
-#### To be implemented soon
-
-- (Ocaml version exists) _Generalized Alignment-Based Trace Clustering of Process Behavior_ by Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
+- _Generalized Alignment-Based Trace Clustering of Process Behavior_ by Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
  
 ## ENVIRONNEMENT & INSTALLATION
 
@@ -108,6 +105,47 @@ artefacts.multiAlignment(model,m0,mf,traces)
 print(artefacts.getRun())
 print(artefacts.getTracesWithDistances())
 ```
+
+## AMSTC 
+
+AMSTC is a trace clustering method that allows one to extract subnet centroids from a process model. The input is then 
+a log and a model and it outputs a set of subnets and associated clustered traces. The method is implemented in SAT but a sampling method allows to run large logs.
+```python
+# process model
+model, m0, mf = importer.pnml.import_net('examples/medium/model2.pnml')
+
+# log traces
+traces = xes_importer.import_log('examples/medium/model2.xes')
+
+# sampleSize : number of traces that are used in the sampling method
+sampleSize= 5 
+
+# sizeOfRun : maximal length requested to compute alignment 
+sizeOfRun = 8
+
+# maxNbC : maximal number of transitions per cluster to avoid to get a unique centroid
+maxNbC = 5
+
+# m : number of cluster that will be searching at each AMSTC of the sampling method. Understand that more than m cluster can 
+be returned. 
+m = 2
+
+# maxCounter : as this is a sampling method, maxCounter is the number of fails of AMSTC before the sampling method stops
+# silent_label : every transition that contains this string will not cost in alignment
+clustering=samplingVariantsForAmstc(net,m0,mf,log,sampleSize,sizeOfRun,maxD,maxNbC,m,maxCounter=1,silent_label="tau")
+```
+
+The clustering can then be used like : 
+```python
+from pm4py.visualization.petrinet import factory as vizu
+
+for (centroid, traces) in clustering:
+    if type(centroid) is tuple:
+        net, m0,mf=centroid
+        vizu.apply(net, m0, mf).view()
+        print(traces)
+```
+
 
 
 ## ACKNOWLEDGEMENT 
