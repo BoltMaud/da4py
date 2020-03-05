@@ -611,6 +611,7 @@ def samplingVariantsForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, ma
         return traces_of_clusters,used_variants,cleaned_clustered_traces, counter
 
     # ---------------------------------------------------------------------------------------------------------------
+    log=deepcopy(log)
     start,totalAlign = time.clock(), 0
     counter, nbOfIteration = 0, 0
     clusters=[]
@@ -659,7 +660,7 @@ def samplingVariantsForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, ma
                 #vizu.apply(net, m0, mf).view()
                 #input("enter..")
         print(len(log._list),"traces are unclustered.")
-
+    clusters.append(("nc",log._list))
     return clusters
 
 

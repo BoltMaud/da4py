@@ -176,7 +176,7 @@
             		</event>
             	</trace>
             		<trace>
-                		<string key="concept:name" value="trace5"/>
+                		<string key="concept:name" value="trace6"/>
                 		<event>
                 			<string key="concept:instance" value="S"/>
                 			<string key="concept:name" value="S"/>
@@ -221,7 +221,7 @@
                                         		</event>
                 	</trace>
                 	<trace>
-                            		<string key="concept:name" value="trace4"/>
+                            		<string key="concept:name" value="trace7"/>
                             		<event>
                             			<string key="concept:instance" value="S"/>
                             			<string key="concept:name" value="S"/>
@@ -248,7 +248,7 @@
                             		</event>
                             	</trace>
 <trace>
-                            <string key="concept:name" value="trace7"/>
+                            <string key="concept:name" value="trace8"/>
                                                     		<event>
                                                     			<string key="concept:instance" value="G"/>
                                                     			<string key="concept:name" value="G"/>

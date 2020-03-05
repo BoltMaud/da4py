@@ -625,7 +625,7 @@ def hamming(s,t):
     if len(t) == 0 :
         while "w" in s: s.remove("w")
         return len(s)
-    if s[0] == t[0] or s[0] in ["tau","w",None] or t[0] in ["tau","w",None] :
+    if s[0] == t[0] or s[0] in ["tau",None] or t[0] in ["tau",None] :
         return hamming(s[1:], t[1:])
     else:
         return hamming(s[1:], t[1:])+1

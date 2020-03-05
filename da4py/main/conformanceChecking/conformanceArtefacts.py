@@ -22,8 +22,10 @@ By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
 import time
+from copy import deepcopy
+
 import pandas as pd
-from pm4py.objects.petri.petrinet import PetriNet
+from pm4py.objects.petri.petrinet import PetriNet, Marking
 from pysat.examples.rc2 import RC2
 from pysat.formula import WCNF
 from da4py.main.conformanceChecking.distancesToFormulas import hamming_distance_per_trace_to_SAT, edit_distance_per_trace_to_SAT, \
@@ -94,9 +96,9 @@ class ConformanceArtefacts:
         :param traces (pm4py.objects.log) : traces
         :return:
         '''
-        self.__net = net
+        self.__artefact=MULTI_ALIGNMENT
         # transforms the model and the log to SAT formulas
-        initialisationFormulas, self.__wait_transition = self.__artefactsInitialisation(m0, mf, traces)
+        initialisationFormulas, self.__wait_transition = self.__artefactsInitialisation(net, m0, mf, traces)
 
         # computes the distance for multi-alignment
         distanceFormula = self.__compute_distance(MULTI_ALIGNMENT, self.__wait_transition)
@@ -116,9 +118,9 @@ class ConformanceArtefacts:
         :param traces (pm4py.objects.log) : traces
         :return:
         '''
-        self.__net = net
+        self.__artefact=ANTI_ALIGNMENT
         # transforms the model and the log to SAT formulas
-        initialisationFormulas, self.__wait_transition = self.__artefactsInitialisation(m0, mf, traces)
+        initialisationFormulas, self.__wait_transition = self.__artefactsInitialisation(net,m0, mf, traces)
 
         # computes the distance for multi-alignment
         distanceFormula = self.__compute_distance(ANTI_ALIGNMENT, self.__wait_transition)
@@ -141,13 +143,13 @@ class ConformanceArtefacts:
        :param silent_transition (string) : transition with this label will not increase the distances
        :return:
        '''
-        initialisationFormulas, self.__wait_transition = self.__artefactsInitialisation(m0, mf, traces)
+        initialisationFormulas, self.__wait_transition = self.__artefactsInitialisation(net,m0, mf, traces)
         distanceFormula = self.__compute_distance(EXACT_ALIGNMENT, self.__wait_transition)
         wncf = self.__createWncf(initialisationFormulas, distanceFormula, EXACT_ALIGNMENT)
         self.__solveWncf(wncf)
         return 0
 
-    def __artefactsInitialisation(self, m0, mf, traces):
+    def __artefactsInitialisation(self,net, m0, mf, traces):
         '''
         The initialisation of all the artefacts :
             - launches a VariablesGenerator to creates the variables numbers
@@ -158,6 +160,7 @@ class ConformanceArtefacts:
         :param traces (pm4py.objects.log) : traces
         :return:
         '''
+        self.__copy_net(net,m0,mf)
         # this variable (__variables) memorises the numbers of the boolean variables of the formula
         self.__vars = vg.VariablesGenerator()
 
@@ -166,7 +169,7 @@ class ConformanceArtefacts:
 
         self.__start_time = time.time()
         # the model is translated to a formula
-        pn_formula, places, self.__transitions, self.__silent_transitions = petri_net_to_SAT(self.__net, m0, mf, self.__vars,
+        pn_formula, places, self.__transitions, self.__silent_transitions = petri_net_to_SAT(self.__pn, self.__m0, self.__mf, self.__vars,
                                                                                              self.__size_of_run,
                                                                                              self.__reachFinal,
                                                                                              label_m=BOOLEAN_VAR_MARKING_PN,
@@ -178,13 +181,27 @@ class ConformanceArtefacts:
         self.__traces = traces
         return [pn_formula, log_formula], self.__wait_transition
 
+    def __copy_net(self,pn, m0, mf):
+        self.__pn=deepcopy(pn)
+        self.__transitions=list(self.__pn.transitions)
+        self.__places=list(self.__pn.places)
+        self.__arcs=list(self.__pn.arcs)
+        self.__m0=Marking()
+        self.__mf=Marking()
+        for p in self.__pn.places:
+            for n in m0.keys():
+                if n.name==p.name :
+                    self.__m0[p]=1
+            for n in mf.keys():
+                if n.name==p.name:
+                    self.__mf[p]=1
+
     def __compute_distance(self, artefact, wait_transition):
         '''
         :param artefact: EXACT_ALIGNMENT or MULTI_ALIGNMENT or ANTI_ALIGNMENT, see globale variables
         :param wait_transition: see add_wait_transition
         :return: formulas of the distance
         '''
-
         if self.__distance_type == HAMMING_DISTANCE:
             return hamming_distance_per_trace_to_SAT(artefact, self.__transitions, self.__silent_transitions, self.__vars, len(self.__traces),
                                                      self.__size_of_run)
@@ -256,7 +273,7 @@ class ConformanceArtefacts:
         solver = RC2(wcnf, solver=self.__solver)
         solver.compute()
         end_solver = time.time()
-        self.__model = solver.model
+        self.__model = solver.model if solver.model else None
         self.__total_time=time.time()
 
     def getPrecision(self):
@@ -264,52 +281,70 @@ class ConformanceArtefacts:
         Formula : 1 - (distance/max length)
         :return (int)
         '''
-        try :
-            if self.__distance_type==EDIT_DISTANCE:
-                for d in range (self.__max_d,-1,-1):
-                    if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
-                        print(d, self.__max_d)
-                        return float(1)-float(d)/float(self.__max_d)
-            if self.__distance_type==HAMMING_DISTANCE:
-                for d in range (self.__size_of_run,-1,-1):
-                    if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
-                        print(d, self.__max_d)
-                        return float(1)-float(d)/float(self.__max_d)
-        except:
-            raise Exception("Precision can only be computed with OptimizeSup to True.")
+        if self.__artefact==ANTI_ALIGNMENT:
+            if self.__model is not None:
+                try :
+                    if self.__distance_type==EDIT_DISTANCE:
+                        for d in range (self.__max_d,-1,-1):
+                            if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
+                                return float(1)-float(d)/float(self.__max_d)
+                    if self.__distance_type==HAMMING_DISTANCE:
+                        for d in range (self.__size_of_run,-1,-1):
+                            if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
+                                return float(1)-float(d)/float(self.__max_d)
+                except:
+                    raise Exception("Precision can only be computed with OptimizeSup to True.")
+            else :
+                return None
+        else :
+            raise Exception("Precision should be done with anti-alignment.")
 
     def getMinDistanceToRun(self):
         '''
         While artefact is computed, one may want to know what is the minimal distance of the run to the traces.
         :return (int)
         '''
-        if self.__optimizeMin:
-            for d in range (self.__max_d,-1,-1):
-                if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
-                    return d
-        else :
-            # subfunction to get the good variables.
-            if self.__distance_type=="hamming":
-                def functionDistance(j,d):
-                    return self.__vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, d])
+        if self.__artefact==ANTI_ALIGNMENT:
+            if self.__model is not None:
+                if  self.__optimizeMin:
+                    if self.__distance_type=="edit":
+                        for d in range (0,self.__max_d+1):
+                            if not self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
+                                return d-1
+                    else :
+                        for d in range (0,self.__size_of_run):
+                            if not self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
+                                return d-1
+                else :
+                    # subfunction to get the good variables.
+                    if self.__distance_type=="hamming":
+                        def functionDistance(j,d):
+                            return self.__vars.get(BOOLEAN_VAR_HAMMING_DISTANCE, [j, d])
+                    else:
+                        def functionDistance(j,d):
+                            return self.__vars.get(BOOLEAN_VAR_EDIT_DISTANCE, [j, self.__size_of_run, self.__size_of_run, d])
+                    # when one maximised the max, we check all the traces.
+                    for d in range (0,self.__max_d):
+                            for j in range(0,len(self.__traces)):
+                                if functionDistance(j,d) not in self.__model:
+                                    return d-1
             else:
-                def functionDistance(j,d):
-                    return self.__vars.get(BOOLEAN_VAR_EDIT_DISTANCE, [j, self.__size_of_run, self.__size_of_run, d])
-            # when one maximised the max, we check all the traces.
-            for d in range (0,self.__max_d):
-                    for j in range(0,len(self.__traces)):
-                        if functionDistance(j,d) not in self.__model:
-                            return d-1
+                return None
+        else :
+            raise Exception("Not developed for multi-alignment.")
 
     def getRealSizeOfRun(self):
         '''
         As we complete run with "wait" transition, we need the real size of the run
         :return:
         '''
-        i_wait=self.__transitions.index(self.__wait_transition)
-        for i in range(self.__size_of_run,0,-1):
-            if self.__vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, i_wait]) not in self.__model:
-                return i
+        if self.__model is not None:
+            i_wait=self.__transitions.index(self.__wait_transition)
+            for i in range(self.__size_of_run,0,-1):
+                if self.__vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN, [i, i_wait]) not in self.__model:
+                    return i
+        else:
+            return None
 
     def getRun(self,debug=False):
         '''
@@ -431,17 +466,17 @@ class ConformanceArtefacts:
         :return:
         '''
         wait_transition = PetriNet.Transition(WAIT_TRANSITION, WAIT_TRANSITION)
-        for place in self.__net.places:
+        for place in self.__pn.places:
             if len(place.out_arcs) == 0:
                 arcIn = PetriNet.Arc(place, wait_transition)
                 arcOut = PetriNet.Arc(wait_transition, place)
-                self.__net.arcs.add(arcIn)
-                self.__net.arcs.add(arcOut)
+                self.__pn.arcs.add(arcIn)
+                self.__pn.arcs.add(arcOut)
                 wait_transition.in_arcs.add(arcIn)
                 wait_transition.out_arcs.add(arcOut)
                 place.out_arcs.add(arcIn)
                 place.in_arcs.add(arcOut)
-        self.__net.transitions.add(wait_transition)
+        self.__pn.transitions.add(wait_transition)
         return wait_transition
 
 

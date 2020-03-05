@@ -23,9 +23,6 @@ This file contains a set of classes of boolean formulas :
 # needed for abstract methods
 from abc import ABCMeta, abstractmethod
 
-# number of variables, used in clausesToCnf translation
-NB_VARS = 0
-
 
 class Qbf_formula:
     '''
@@ -108,12 +105,11 @@ class Operator(Qbf_formula):
         :param nbVars (int) : number of variables will increase
         :return list * list * int : CNF clauses
         '''
-        global NB_VARS
-        NB_VARS = nbVars
-        return self.aux_operatorToCnf()
+        nbVars,cnf=self.aux_operatorToCnf(nbVars)
+        return cnf
 
     @abstractmethod
-    def aux_operatorToCnf(self):
+    def aux_operatorToCnf(self,nbVars):
         '''
         Specific function depending on the operator
         :return list * list * int : CNF clauses
@@ -161,7 +157,7 @@ class And(Operator):
         self.positiveVariables = []
         self.negativeVariables = []
 
-    def aux_operatorToCnf(self):
+    def aux_operatorToCnf(self,nbVars):
         dnfPositiveVariables = []
         dnfNegativeVariables = []
         for v in self.positiveVariables:
@@ -170,9 +166,10 @@ class And(Operator):
             dnfNegativeVariables.append([v * -1])
         left = []
         for formula in self.qbf_formulas:
-            cnf = formula.aux_operatorToCnf()
+            nbVars,cnf = formula.aux_operatorToCnf(nbVars)
             left += cnf
-        return dnfPositiveVariables + dnfNegativeVariables + left
+        formulas=dnfPositiveVariables + dnfNegativeVariables + left
+        return nbVars,formulas
 
     def myoperatorToCnf(self):
         listOfcnf = []
@@ -202,25 +199,24 @@ class Or(Operator):
     def distributeImplication(self, var):
         self.negativeVariables.append(var)
 
-    def aux_operatorToCnf(self):
+    def aux_operatorToCnf(self,nbVars):
         if len(self.qbf_formulas) == 1 and self.qbf_formulas[0].type == "OR" and len(
                 self.qbf_formulas[0].getpositiveVariables()) == 0 \
                 and len(self.qbf_formulas[0].getnegativeVariables()) == 0:
-            clauses = Or(self.positiveVariables, self.negativeVariables,
-                         self.qbf_formulas[0].qbf_formulas).aux_operatorToCnf()
-            return clauses
+            nbVars,clauses = Or(self.positiveVariables, self.negativeVariables,
+                         self.qbf_formulas[0].qbf_formulas).aux_operatorToCnf(nbVars)
+            return nbVars,clauses
         else:
-            global NB_VARS
             newVariables = []
-            for numVariable in range(NB_VARS, NB_VARS + len(self.qbf_formulas)):
+            for numVariable in range(nbVars, nbVars + len(self.qbf_formulas)):
                 newVariables.append(numVariable)
             dnf = self.positiveVariables + newVariables + [v * -1 for v in self.negativeVariables]
             for i in range(0, len(self.qbf_formulas)):
                 # distribute implication
                 if self.qbf_formulas[i].type == "OR":
-                    self.qbf_formulas[i].negativeVariables = self.qbf_formulas[i].negativeVariables + [NB_VARS + i]
+                    self.qbf_formulas[i].negativeVariables = self.qbf_formulas[i].negativeVariables + [nbVars + i]
                 else:
-                    var = NB_VARS + i
+                    var = nbVars + i
                     newListOfFormulas = []
                     for positiveVariable in self.qbf_formulas[i].positiveVariables:
                         newListOfFormulas.append(Or([positiveVariable], [var], []))
@@ -231,13 +227,13 @@ class Or(Operator):
                     self.qbf_formulas[i].qbf_formulas = newListOfFormulas
                     self.qbf_formulas[i].negativeVariables = []
                     self.qbf_formulas[i].positiveVariables = []
-            NB_VARS += len(self.qbf_formulas)
+            nbVars += len(self.qbf_formulas)
             if len(self.qbf_formulas) == 0:
-                return [dnf]
+                return nbVars,[dnf]
             else:
-                clauses = And([], [], self.qbf_formulas).aux_operatorToCnf()
+                nbVars,clauses = And([], [], self.qbf_formulas).aux_operatorToCnf(nbVars)
                 clauses.append(dnf)
-                return clauses
+                return nbVars,clauses
 
     def myoperatorToCnf(self):
         listOfClausesFromVars = []

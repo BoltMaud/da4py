@@ -169,3 +169,11 @@ class VariablesGenerator:
                     list_of_indexes.append(str(number // div + self.set[key].listOfBoundaries[i][0]))
                     number = number % div
                 return key + " [" + ', '.join(list_of_indexes) + ", " + str(number+self.set[key].listOfBoundaries[-1][0]) + "]"
+
+    def getAll(self,name):
+        '''
+        Get list of all variables of a name
+        :param name (String)
+        :return:  (list)
+        '''
+        return list(range (self.set[name].min,self.set[name].max))
