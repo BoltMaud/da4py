@@ -106,6 +106,7 @@ class Operator(Qbf_formula):
         :return list * list * int : CNF clauses
         '''
         nbVars,cnf=self.aux_operatorToCnf(nbVars)
+        self.nbVars=nbVars
         return cnf
 
     @abstractmethod

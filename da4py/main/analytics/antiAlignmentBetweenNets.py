@@ -1,5 +1,7 @@
 import itertools
 
+from pm4py.objects.petri.petrinet import PetriNet
+
 from da4py.main.objects.pnToFormulas import petri_net_to_SAT
 from da4py.main.utils import variablesGenerator as vg, formulas
 from da4py.main.utils.formulas import Or, And
@@ -9,23 +11,21 @@ BOOLEAN_VAR_MARKING_PN_1="m1_ip"
 BOOLEAN_VAR_MARKING_PN_2="m2_ip"
 BOOLEAN_VAR_FIRING_TRANSITION_PN_1="tau1_ia"
 BOOLEAN_VAR_FIRING_TRANSITION_PN_2="tau2_ia"
-BOOLEAN_VAR_DIFF="diff_i"
+BOOLEAN_VAR_DIFF="diff_i1"
+
 
 def apply(net1, m01, mf1, net2, m02, mf2, size_of_run, d, silent_label=None):
-    print("he")
 
     vars = vg.VariablesGenerator()
-
     pn1_formula, pn1_places, pn1_transitions, pn1_silent_transitions=petri_net_to_SAT(net1, m01, mf1, vars,
                                                                          size_of_run,
-                                                                         reach_final=False,
+                                                                         reach_final=True,
                                                                          label_m=BOOLEAN_VAR_MARKING_PN_1,
                                                                          label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN_1,
                                                                          silent_transition=silent_label)
-
     pn2_formula, pn2_places, pn2_transitions, pn2_silent_transitions=petri_net_to_SAT(net2, m02, mf2, vars,
                                                                                       size_of_run,
-                                                                                      reach_final=False,
+                                                                                      reach_final=True,
                                                                                       label_m=BOOLEAN_VAR_MARKING_PN_2,
                                                                                       label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN_2,
                                                                                       silent_transition=silent_label)
@@ -38,21 +38,18 @@ def apply(net1, m01, mf1, net2, m02, mf2, size_of_run, d, silent_label=None):
     listOfForAll=vars.getAll(BOOLEAN_VAR_MARKING_PN_1)+vars.getAll(BOOLEAN_VAR_FIRING_TRANSITION_PN_1)
     listOfExist=vars.getAll(BOOLEAN_VAR_MARKING_PN_2)+vars.getAll(BOOLEAN_VAR_FIRING_TRANSITION_PN_2)+vars.getAll(BOOLEAN_VAR_DIFF)
     full_formula=Or([],[],[pn1_formula.negation(),And([],[],[dist_formulas,maxDist_formulas,pn2_formula])])
-    #full_formula=pn1_formula
     cnf=full_formula.operatorToCnf(vars.iterator)
-    listOfExist+=list(range(vars.iterator,formulas.NB_VARS))
-    writeQDimacs(formulas.NB_VARS,listOfForAll, listOfExist, cnf)
+    listOfExist+=list(range(vars.iterator,full_formula.nbVars))
+    writeQDimacs(full_formula.nbVars,listOfForAll, listOfExist, cnf)
     runCadet()
     positives,negatives=cadetOutputQDimacs()
     for var in positives:
-        if vars.getVarName(var) != None:
-            print(var)
-            print(vars.getVarName(var))
+        if vars.getVarName(var) != None and vars.getVarName(var).startswith("tau1_ia"):
+            print(vars.getVarName(var),pn1_transitions[int(vars.getVarName(var).split(", ")[1].split("]")[0])])
     print("....")
     for var in negatives:
-        if vars.getVarName(var) != None:
-            print(var)
-            print(vars.getVarName(var))
+        if vars.getVarName(var) != None  and vars.getVarName(var).startswith("tau1_ia"):
+            print(vars.getVarName(var),pn1_transitions[int(vars.getVarName(var).split(", ")[1].split("]")[0])])
 
 
 def distanceNets(vars,size_of_run, tau1,tau2,pn1_transitions,pn2_transitions):
@@ -61,9 +58,11 @@ def distanceNets(vars,size_of_run, tau1,tau2,pn1_transitions,pn2_transitions):
     for i in range (1,size_of_run+1):
         for t1 in pn1_transitions:
             listOfSameLabels=[tau2([i,pn2_transitions.index(t2)]) for t2 in pn2_transitions if t2.label==t1.label]
-            formula.append(Or([vars.getFunction(BOOLEAN_VAR_DIFF)([i]),tau1([i,pn1_transitions.index(t1)]) ],
-                           listOfSameLabels,[]))
+            listOfSameLabels.append(vars.getFunction(BOOLEAN_VAR_DIFF)([i]))
+            formula.append(Or(listOfSameLabels,[tau1([i,pn1_transitions.index(t1)]) ],[]))
+
     return And([],[],formula)
+
 
 def maxDistance(delta, max_d,size_of_run):
     formulas=[]

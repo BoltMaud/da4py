@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="da4py",
-    version="0.0.1",
+    version="0.0.3",
     author="Boltenhagen Mathilde",
     author_email="boltenhagen@lsv.fr",
     description="da4py implements state-of-the-art Process Mining methods over SAT encoding. An Ocaml version is Darksider.",

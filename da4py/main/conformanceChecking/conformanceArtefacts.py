@@ -21,6 +21,7 @@ Scientific paper : _Encoding Conformance Checking Artefacts in SAT_
 By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 
 '''
+import math
 import time
 from copy import deepcopy
 
@@ -71,7 +72,7 @@ class ConformanceArtefacts:
 
     '''
 
-    def __init__(self, distance=EDIT_DISTANCE, solver="g4"):
+    def __init__(self, distance=EDIT_DISTANCE, solver="g4",reachFinal=False):
         '''
         Conformance artefact share some initialisation
         :param distance (string) : value = HAMMING_DISTANCE or EDIT_DISTANCE
@@ -82,7 +83,7 @@ class ConformanceArtefacts:
         self.__silent_label=SILENT_LABEL
         self.__max_nbTraces=None
         self.__optimizeMin=True
-        self.__reachFinal=False
+        self.__reachFinal=reachFinal
 
     def multiAlignment(self, net, m0, mf, traces):
         '''
@@ -538,3 +539,27 @@ class ConformanceArtefacts:
 
     def getSizeOfLog(self):
         return len(self.__traces)
+
+
+def getPrecision(net, m0,mf, log, epsilon):
+    size_of_run=2
+    end_loop = -1
+    computeAntiAlignment=ConformanceArtefacts()
+    while (size_of_run > end_loop ):
+        size_of_run+=1
+        computeAntiAlignment.setSize_of_run(size_of_run)
+        computeAntiAlignment.setMax_d(size_of_run*2)
+        computeAntiAlignment.antiAlignment(net,m0,mf,log)
+        aa = computeAntiAlignment.getRun()
+        print(aa)
+        while 'w' in aa:
+            aa.remove('w')
+        m = (computeAntiAlignment.getMinDistanceToRun()/(len(aa)+7)) / (1+epsilon)**(len(aa))
+        print(m)
+        if m > 0 :
+            end_loop = math.floor(math.log((1+epsilon)**(len(aa)))/math.log((1+epsilon)))
+        else :
+            end_loop = m
+        print(size_of_run,computeAntiAlignment.getMinDistanceToRun(), "|", m,end_loop )
+
+    print(computeAntiAlignment.getRun())

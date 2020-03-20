@@ -34,7 +34,7 @@ def is_run(size_of_run, places, transitions, m0, mf, m_ip, tau_it,reach_final):
     '''
     positives = [m_ip([0, places.index(m)]) for m in m0]
     if reach_final:
-        [positives.append(m_ip(size_of_run,places.index(m))) for m in mf]
+        positives+=[m_ip([size_of_run,places.index(m)]) for m in mf]
     negatives = [m_ip([0, places.index(m)]) for m in places if m not in m0]
     formulas = [is_action(places, transitions, m0, i, m_ip, tau_it) for i in range(1, size_of_run + 1)]
     run_of_pn = And(positives, negatives, formulas)
