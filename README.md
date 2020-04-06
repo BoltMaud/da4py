@@ -146,6 +146,28 @@ for (centroid, traces) in clustering:
         print(traces)
 ```
 
+## SAT Encoding & Formula Shapes
+The tool first constructs SAT formulas using operator classes AND and OR of da4py.utils.formulas.py. Those formulas are fully described in the published related papers. 
+```
+AND( [], [], 
+	AND( [m_ip [0, 0]], [m_ip [0, 1]], 
+		AND( [], [], 
+			OR( [], [], 
+				AND( [tau_it [1, 0]], [tau_it [1, 1], tau_it [1, 2]], ) 
+				AND( [tau_it [1, 1]], [tau_it [1, 0], tau_it [1, 2]], ) 
+				AND( [tau_it [1, 2]], [tau_it [1, 0], tau_it [1, 1]], )) 
+			OR( [], [tau_it [1, 0]], 
+				AND( [], [], 
+					OR( [], [], 
+						AND( [m_ip [1, 0], m_ip [0, 0]], [], ) 
+						AND( [], [m_ip [1, 0], m_ip [0, 0]], )) 
+					AND( [m_ip [1, 1], m_ip [0, 1]], [], ))) 
+                    ...
+```
+Then, the formula is translated to a WCNF form which is solved with `pysat` librairy.
+```
+[[2], [-1], [7, -82], [-8, -82], [-9, -82], [8, -83], [82, 83, 84], [3, -86]...]
+```
 
 
 ## ACKNOWLEDGEMENT 
