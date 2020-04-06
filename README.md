@@ -164,7 +164,7 @@ AND( [], [],
 					AND( [m_ip [1, 1], m_ip [0, 1]], [], ))) 
                     ...
 ```
-Then, the formula is translated to a WCNF form which is solved with `pysat` librairy.
+Then, the formula is translated to a WCNF form which is solved with `pysat` library.
 ```
 [[2], [-1], [7, -82], [-8, -82], [-9, -82], [8, -83], [82, 83, 84], [3, -86]...]
 ```
