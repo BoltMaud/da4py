@@ -608,9 +608,9 @@ def levenshtein(s, t):
         return len(t)
     if len(t) == 0 :
         return len(s)
-    if s[-1] in ["tau","w",None]:
+    if s[-1] in ["w",None]:
         return levenshtein(s[:-1], t)
-    if t[-1] in ["tau","w",None] :
+    if t[-1] in ["w",None] :
         return levenshtein(s, t[:1])
     if s[-1] == t[-1] :
         return levenshtein(s[:-1], t[:-1])

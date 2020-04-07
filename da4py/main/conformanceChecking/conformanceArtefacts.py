@@ -24,6 +24,7 @@ By : Mathilde Boltenhagen, Thomas Chatain, Josep Carmona
 import math
 import time
 from copy import deepcopy
+from pm4py.objects.log.util.log import project_traces
 
 import pandas as pd
 from pm4py.objects.petri.petrinet import PetriNet, Marking
@@ -129,7 +130,7 @@ class ConformanceArtefacts:
         # solve the formulas
         wncf = self.__createWncf(initialisationFormulas, distanceFormula, ANTI_ALIGNMENT)
         self.__solveWncf(wncf)
-        return 0
+        return 1 if self.__model else 0
 
     def exactAlignment(self, net, m0, mf, traces):
         '''
@@ -228,6 +229,7 @@ class ConformanceArtefacts:
         wcnf = WCNF()
         wcnf.extend(cnf)
         wcnf = self.__createWeights(wcnf,artefactForMinimization)
+
         self.__formula_time = time.time()
         return wcnf
 
@@ -272,9 +274,7 @@ class ConformanceArtefacts:
         :return:
         '''
         solver = RC2(wcnf, solver=self.__solver)
-        solver.compute()
-        end_solver = time.time()
-        self.__model = solver.model if solver.model else None
+        self.__model=solver.compute()
         self.__total_time=time.time()
 
     def getPrecision(self):
@@ -540,26 +540,38 @@ class ConformanceArtefacts:
     def getSizeOfLog(self):
         return len(self.__traces)
 
-
-def getPrecision(net, m0,mf, log, epsilon):
-    size_of_run=2
-    end_loop = -1
-    computeAntiAlignment=ConformanceArtefacts()
-    while (size_of_run > end_loop ):
+def antiAlignmentPrecision(net, m0,mf, log, epsilon):
+    '''
+    Exact anti-alignment presented in Anti-Alignment -- Measuring the Precision of Process Models and Event Logs
+    :param net: Petri net
+    :param m0: initial Marking
+    :param mf: final Marking
+    :param log: Log Traces
+    :param epsilon: to limit the search when there are loops in model
+    :return Precision
+    '''
+    size_of_run=1
+    end_loop = 99999
+    traces= project_traces(log)
+    computeAntiAlignment=ConformanceArtefacts(reachFinal=True)
+    while (size_of_run < end_loop ):
         size_of_run+=1
         computeAntiAlignment.setSize_of_run(size_of_run)
         computeAntiAlignment.setMax_d(size_of_run*2)
-        computeAntiAlignment.antiAlignment(net,m0,mf,log)
-        aa = computeAntiAlignment.getRun()
-        print(aa)
-        while 'w' in aa:
-            aa.remove('w')
-        m = (computeAntiAlignment.getMinDistanceToRun()/(len(aa)+7)) / (1+epsilon)**(len(aa))
-        print(m)
-        if m > 0 :
-            end_loop = math.floor(math.log((1+epsilon)**(len(aa)))/math.log((1+epsilon)))
-        else :
-            end_loop = m
-        print(size_of_run,computeAntiAlignment.getMinDistanceToRun(), "|", m,end_loop )
+        if computeAntiAlignment.antiAlignment(net,m0,mf,log):
+            aa = computeAntiAlignment.getRun()
+            while 'w' in aa:
+                aa.remove('w')
+            min_distance_to_aa= computeAntiAlignment.getMinDistanceToRun()
+            dist=1
+            for l in traces:
+                if levenshtein(aa,l)/ (size_of_run+len(l)) < dist:
+                    dist=levenshtein(aa,l)/ (size_of_run+len(l))
+            m = dist / (1+epsilon)**(size_of_run)
+            if m > 0 :
+                end_loop = math.floor(-math.log(m)/math.log((1+epsilon)))
+            else :
+                end_loop = m
+            print(aa,";",size_of_run,";",dist, ";", m,";",end_loop)
 
-    print(computeAntiAlignment.getRun())
+    return 1-m
