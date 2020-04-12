@@ -285,14 +285,19 @@ class ConformanceArtefacts:
         if self.__artefact==ANTI_ALIGNMENT:
             if self.__model is not None:
                 try :
+                    aa = self.getRun()
+                    while 'w' in aa:
+                        aa.remove('w')
+                    dist=1
                     if self.__distance_type==EDIT_DISTANCE:
-                        for d in range (self.__max_d,-1,-1):
-                            if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
-                                return float(1)-float(d)/float(self.__max_d)
+                        for l in self.__traces:
+                            if levenshtein(aa,l)/ (len(aa)+len(l)) < dist:
+                                dist=levenshtein(aa,l)/ (len(aa)+len(l))
                     if self.__distance_type==HAMMING_DISTANCE:
-                        for d in range (self.__size_of_run,-1,-1):
-                            if self.__vars.get(BOOLEAN_VAR_SUP, [d]) in self.__model:
-                                return float(1)-float(d)/float(self.__max_d)
+                        for l in self.__traces:
+                            if hamming(aa,l)/ (len(aa)+len(l)) < dist:
+                                dist=hamming(aa,l)/ max(len(aa),len(l))
+                    return 1-dist
                 except:
                     raise Exception("Precision can only be computed with OptimizeSup to True.")
             else :
@@ -540,7 +545,7 @@ class ConformanceArtefacts:
     def getSizeOfLog(self):
         return len(self.__traces)
 
-def antiAlignmentPrecision(net, m0,mf, log, epsilon):
+def antiAlignmentPrecision(net, m0,mf, log, epsilon,distance="edit",nbMaxOfTrials=10):
     '''
     Exact anti-alignment presented in Anti-Alignment -- Measuring the Precision of Process Models and Event Logs
     :param net: Petri net
@@ -554,7 +559,11 @@ def antiAlignmentPrecision(net, m0,mf, log, epsilon):
     end_loop = 99999
     traces= project_traces(log)
     computeAntiAlignment=ConformanceArtefacts(reachFinal=True)
-    while (size_of_run < end_loop ):
+    computeAntiAlignment.setSilentLabel("tau")
+    computeAntiAlignment.setDistance_type(distance)
+    M=0
+    nb_trials=0
+    while (size_of_run < end_loop and nb_trials<nbMaxOfTrials  ):
         size_of_run+=1
         computeAntiAlignment.setSize_of_run(size_of_run)
         computeAntiAlignment.setMax_d(size_of_run*2)
@@ -562,16 +571,21 @@ def antiAlignmentPrecision(net, m0,mf, log, epsilon):
             aa = computeAntiAlignment.getRun()
             while 'w' in aa:
                 aa.remove('w')
-            min_distance_to_aa= computeAntiAlignment.getMinDistanceToRun()
             dist=1
             for l in traces:
-                if levenshtein(aa,l)/ (size_of_run+len(l)) < dist:
-                    dist=levenshtein(aa,l)/ (size_of_run+len(l))
-            m = dist / (1+epsilon)**(size_of_run)
+                if distance==HAMMING_DISTANCE:
+                    if hamming(aa,l)/ (len(aa)+len(l)) < dist:
+                        dist=hamming(aa,l)/ max(len(aa),len(l))
+                if distance==EDIT_DISTANCE:
+                    if levenshtein(aa,l)/ (len(aa)+len(l)) < dist:
+                        dist=levenshtein(aa,l)/ (len(aa)+len(l))
+            m = dist / (1+epsilon)**(len(aa))
             if m > 0 :
-                end_loop = math.floor(-math.log(m)/math.log((1+epsilon)))
+                end_loop = min(end_loop,math.floor(-math.log(m)/math.log((1+epsilon))))
+            if M==max(M,m):
+                nb_trials+=1
             else :
-                end_loop = m
-            print(aa,";",size_of_run,";",dist, ";", m,";",end_loop)
-
-    return 1-m
+                M=max(M,m)
+                nb_trials=0
+            print(aa,";",size_of_run,";",dist, ";",M, m,";",end_loop)
+    return 1-M
