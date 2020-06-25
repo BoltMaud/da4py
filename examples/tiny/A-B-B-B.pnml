@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<pnml><net id="net1" type="http://www.pnml.org/version-2009/grammar/pnmlcoremodel"><name><text>Petrinet</text></name>
+<page id="n0"><name><text>([B],[B],[B])</text></name>
+<place id="n1"><name><text>sstart</text></name><toolspecific tool="ProM" version="6.4" localNodeID="adc50b0f-dfb3-485c-ba2d-b19a1fba1e93"/><graphics><position x="93.75" y="53.0"/><dimension x="12.5" y="12.5"/></graphics></place>
+<place id="n2"><name><text>Start</text></name><toolspecific tool="ProM" version="6.4" localNodeID="1c29b150-4540-4100-ab52-ff91aafbfe8d"/><graphics><position x="6.25" y="53.0"/><dimension x="12.5" y="12.5"/></graphics><initialMarking><text>1</text></initialMarking></place>
+<place id="n3"><name><text>End</text></name><toolspecific tool="ProM" version="6.4" localNodeID="ffd6867c-db8b-4f74-8e12-ff76e72bc2d0"/><graphics><position x="181.25" y="53.0"/><dimension x="12.5" y="12.5"/></graphics></place>
+<place id="n6"><name><text>End</text></name><toolspecific tool="ProM" version="6.4" localNodeID="ffd6867c-db8b-4f74-8e12-ff76e72bc2d0"/><graphics><position x="181.25" y="53.0"/><dimension x="12.5" y="12.5"/></graphics></place>
+<place id="n10"><name><text>End</text></name><toolspecific tool="ProM" version="6.4" localNodeID="ffd6867c-db8b-4f74-8e12-ff76e72bc2d0"/><graphics><position x="181.25" y="53.0"/><dimension x="12.5" y="12.5"/></graphics></place>
+
+<transition id="n4"><name><text>B</text></name><toolspecific tool="ProM" version="6.4" activity="B" localNodeID="6ca07d4c-3db0-4852-a8ef-1347d4485693"/><graphics><position x="50.0" y="53.0"/><dimension x="25.0" y="20.0"/><fill color="#FFFFFF"/></graphics></transition>
+<transition id="n5"><name><text>B</text></name><toolspecific tool="ProM" version="6.4" activity="B" localNodeID="bd893dae-f73a-459b-986f-18c98bc07915"/><graphics><position x="137.5" y="53.0"/><dimension x="25.0" y="20.0"/><fill color="#FFFFFF"/></graphics></transition>
+<transition id="n7"><name><text>B</text></name><toolspecific tool="ProM" version="6.4" activity="B" localNodeID="bd893dae-f73a-459b-986f-18c98bc07915"/><graphics><position x="137.5" y="53.0"/><dimension x="25.0" y="20.0"/><fill color="#FFFFFF"/></graphics></transition>
+<transition id="n8"><name><text>C</text></name><toolspecific tool="ProM" version="6.4" activity="C" localNodeID="bd893dae-f73a-459b-986f-18c98bc07915"/><graphics><position x="137.5" y="53.0"/><dimension x="25.0" y="20.0"/><fill color="#FFFFFF"/></graphics></transition>
+
+<arc id="arc6" source="n4" target="n1"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="c0721c29-d29b-4899-9522-0876123513df"/><arctype><text>normal</text></arctype></arc>
+<arc id="arc7" source="n2" target="n4"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="bc7621ae-a0c6-4072-9a06-6a7a1549a383"/><arctype><text>normal</text></arctype></arc>
+<arc id="arc8" source="n1" target="n5"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="92ab891b-88e0-4cfb-8d86-91f1cd3550d8"/><arctype><text>normal</text></arctype></arc>
+<arc id="arc9" source="n5" target="n3"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="966bb2f1-80d7-40ae-b69a-3212718cacf9"/><arctype><text>normal</text></arctype></arc>
+<arc id="arc10" source="n3" target="n7"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="966bb2f2-80d7-40ae-b69a-3212718cacf9"/><arctype><text>normal</text></arctype></arc>
+<arc id="arc11" source="n7" target="n6"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="966bb2f3-80d7-40ae-b69a-3212718cacf9"/><arctype><text>normal</text></arctype></arc>
+
+<arc id="arc12" source="n6" target="n8"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="966bb2f1-80d7-40ae-b69a-3212718cacf9"/><arctype><text>normal</text></arctype></arc>
+<arc id="arc10" source="n8" target="n10"><name><text>1</text></name><toolspecific tool="ProM" version="6.4" localNodeID="966bb2f2-80d7-40ae-b69a-3212718cacf9"/><arctype><text>normal</text></arctype></arc>
+</page><finalmarkings/></net></pnml>

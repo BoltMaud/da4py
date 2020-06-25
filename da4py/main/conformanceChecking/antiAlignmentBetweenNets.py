@@ -18,37 +18,46 @@ BOOLEAN_VAR_DIFF2="diff_2i"
 def apply(net1, m01, mf1, net2, m02, mf2, size_of_run, d, silent_label=None):
 
     vars = vg.VariablesGenerator()
-    we=add_wait_net_end(net1,"wf")
+    #we=add_wait_net_end(net1,"wf")
     w1=add_wait_net(net1,"wf")
+    adapted_size_of_run = size_of_run * size_of_run +size_of_run
     pn1_formula, pn1_places, pn1_transitions, pn1_silent_transitions=petri_net_to_SAT(net1, m01, mf1, vars,
-                                                                                      size_of_run,
+                                                                                      adapted_size_of_run,
                                                                                       reach_final=True,
                                                                                       label_m=BOOLEAN_VAR_MARKING_PN_1,
                                                                                       label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN_1,
-                                                                                      silent_transition=silent_label)
+                                                                                      silent_transition=silent_label,
+                                                                                      space_between_fired=1+size_of_run)
+    print("etape1")
 
+    pn1_force_wait_transitions=force_wait_transition(vars,w1,pn1_transitions, adapted_size_of_run,size_of_run+1)
+    print("etape2")
     w2=add_wait_net(net2,"wf")
     pn2_formula, pn2_places, pn2_transitions, pn2_silent_transitions=petri_net_to_SAT(net2, m02, mf2, vars,
-                                                                                      size_of_run,
+                                                                                      adapted_size_of_run,
                                                                                       reach_final=True,
                                                                                       label_m=BOOLEAN_VAR_MARKING_PN_2,
                                                                                       label_t=BOOLEAN_VAR_FIRING_TRANSITION_PN_2,
                                                                                       silent_transition=silent_label)
-    dist_formulas = distanceNets(vars,size_of_run,vars.getFunction(BOOLEAN_VAR_FIRING_TRANSITION_PN_1),
+    dist_formulas = distanceNets(vars,adapted_size_of_run,vars.getFunction(BOOLEAN_VAR_FIRING_TRANSITION_PN_1),
                                  vars.getFunction(BOOLEAN_VAR_FIRING_TRANSITION_PN_2),pn1_transitions,pn2_transitions,w1,w2)
+    print("etape3")
 
-    maxDist_formulas=maxDistance(vars,vars.getFunction(BOOLEAN_VAR_DIFF1),vars.getFunction(BOOLEAN_VAR_DIFF2),d,size_of_run)
-    notTooManyW=numberOfWaitInRun(vars,size_of_run,vars.getFunction(BOOLEAN_VAR_FIRING_TRANSITION_PN_1),pn1_transitions,w1,we)
-
+    maxDist_formulas=maxDistance(vars,vars.getFunction(BOOLEAN_VAR_DIFF1),vars.getFunction(BOOLEAN_VAR_DIFF2),d,adapted_size_of_run)
+    #notTooManyW=numberOfWaitInRun(vars,size_of_run,vars.getFunction(BOOLEAN_VAR_FIRING_TRANSITION_PN_1),pn1_transitions,w1,we)
+    print("etape4")
     from pm4py.visualization.petrinet import factory as vizu
     #vizu.apply(net2,m02,mf2).view()
     listOfForAll=vars.getAll(BOOLEAN_VAR_MARKING_PN_1)+vars.getAll(BOOLEAN_VAR_FIRING_TRANSITION_PN_1)
     listOfExist=vars.getAll(BOOLEAN_VAR_MARKING_PN_2)+vars.getAll(BOOLEAN_VAR_FIRING_TRANSITION_PN_2)+vars.getAll(BOOLEAN_VAR_DIFF1)+vars.getAll(BOOLEAN_VAR_DIFF2)
 
-    full_formula=Or([],[],[And([],[],[notTooManyW,pn1_formula]).negation(),And([],[],[dist_formulas,maxDist_formulas,pn2_formula])])
+    full_formula=Or([],[],[And([],[],[pn1_formula,pn1_force_wait_transitions]).negation(),And([],[],[dist_formulas,maxDist_formulas,pn2_formula])])
+    print("etape5")
     cnf=full_formula.operatorToCnf(vars.iterator)
+    print("etape6")
     listOfExist+=list(range(vars.iterator,full_formula.nbVars))
     writeQDimacs(full_formula.nbVars,listOfForAll, listOfExist, cnf)
+    print("mais voila")
     runCadet()
     positives,negatives=cadetOutputQDimacs()
     for var in positives:
@@ -60,6 +69,17 @@ def apply(net1, m01, mf1, net2, m02, mf2, size_of_run, d, silent_label=None):
         if vars.getVarName(var) != None  and vars.getVarName(var).startswith("tau1_ia"):
             print(vars.getVarName(var),pn1_transitions[int(vars.getVarName(var).split(", ")[1].split("]")[0])])
 
+def force_wait_transition(vars,w1, pn1_transitions,adapted_size_of_run, space_between_fired):
+    pos=[]
+    neg=[]
+    for i in range(0,adapted_size_of_run+1):
+        if i%space_between_fired!=0:
+            for t in pn1_transitions:
+                if t!=w1:
+                    neg.append(vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN_1,[i,pn1_transitions.index(t)]))
+                else :
+                    pos.append(vars.get(BOOLEAN_VAR_FIRING_TRANSITION_PN_1,[i,pn1_transitions.index(t)]))
+    return And(pos,neg,[])
 
 def add_wait_net(net,wait_label):
     '''
@@ -133,6 +153,7 @@ def distanceNets(vars,size_of_run, tau1,tau2,pn1_transitions,pn2_transitions,w1,
                 formula.append(Or([vars.getFunction(BOOLEAN_VAR_DIFF2)([i]),tau2([i,pn2_transitions.index(w2)])],
                                   [tau1([i,pn1_transitions.index(t1)])],[]))
 
+
     return And([],[],formula)
 
 
@@ -141,6 +162,7 @@ def maxDistance(vars,diff1,diff2, max_d,size_of_run):
     max_distance=size_of_run*2-max_d
     # IDEA : there are at least max_distance number of false variables
     combinaisons_of_instants=list(itertools.combinations(list_to_size_of_run,max_distance))
+    print("wala")
     distFalseVariables=[]
     for instants in combinaisons_of_instants:
         list_distances=[]

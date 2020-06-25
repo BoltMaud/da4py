@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- This file has been generated with the OpenXES library. It conforms -->
+<!-- to the XML serialization of the XES standard for log storage and -->
+<!-- management. -->
+<!-- XES standard version: 1.0 -->
+<!-- OpenXES library version: 1.0RC7 -->
+<!-- OpenXES is available from http://www.openxes.org/ -->
+<log xes.version="1.0" xes.features="nested-attributes" openxes.version="1.0RC7">
+	<extension name="Time" prefix="time" uri="http://www.xes-standard.org/time.xesext"/>
+	<extension name="Lifecycle" prefix="lifecycle" uri="http://www.xes-standard.org/lifecycle.xesext"/>
+	<extension name="Concept" prefix="concept" uri="http://www.xes-standard.org/concept.xesext"/>
+	<string key="concept:name" value="Log"/>
+	<string key="lifecycle:model" value="standard"/>
+	<trace>
+		<string key="concept:name" value="trace0"/>
+		<event>
+			<string key="concept:instance" value="a"/>
+			<string key="concept:name" value="a"/>
+			<string key="lifecycle:transition" value="complete"/>
+			<date key="time:timestamp" value="2000-01-01T01:00:00.000+01:00"/>
+		</event>
+	</trace>
+	<trace>
+		<string key="concept:name" value="trace1"/>
+		<event>
+			<string key="concept:instance" value="a"/>
+			<string key="concept:name" value="a"/>
+			<string key="lifecycle:transition" value="complete"/>
+			<date key="time:timestamp" value="2000-01-01T01:00:03.000+01:00"/>
+		</event>
+		<event>
+			<string key="concept:instance" value="b"/>
+			<string key="concept:name" value="b"/>
+			<string key="lifecycle:transition" value="complete"/>
+			<date key="time:timestamp" value="2000-01-01T01:00:04.000+01:00"/>
+		</event>
+		<event>
+			<string key="concept:instance" value="c"/>
+			<string key="concept:name" value="c"/>
+			<string key="lifecycle:transition" value="complete"/>
+			<date key="time:timestamp" value="2000-01-01T01:00:05.000+01:00"/>
+		</event>
+		<event>
+			<string key="concept:instance" value="d"/>
+			<string key="concept:name" value="d"/>
+			<string key="lifecycle:transition" value="complete"/>
+			<date key="time:timestamp" value="2000-01-01T01:00:06.000+01:00"/>
+		</event>
+	</trace>
+
+	<trace>
+    		<string key="concept:name" value="trace2"/>
+    		<event>
+    			<string key="concept:instance" value="a"/>
+    			<string key="concept:name" value="a"/>
+    			<string key="lifecycle:transition" value="complete"/>
+    			<date key="time:timestamp" value="2000-01-01T01:00:07.000+01:00"/>
+    		</event>
+    		<event>
+    			<string key="concept:instance" value="f"/>
+    			<string key="concept:name" value="f"/>
+    			<string key="lifecycle:transition" value="complete"/>
+    			<date key="time:timestamp" value="2000-01-01T01:00:08.000+01:00"/>
+    		</event>
+    		<event>
+    			<string key="concept:instance" value="g"/>
+    			<string key="concept:name" value="g"/>
+    			<string key="lifecycle:transition" value="complete"/>
+    			<date key="time:timestamp" value="2000-01-01T01:00:09.000+01:00"/>
+    		</event>
+    		<event>
+    			<string key="concept:instance" value="h"/>
+    			<string key="concept:name" value="h"/>
+    			<string key="lifecycle:transition" value="complete"/>
+    			<date key="time:timestamp" value="2000-01-01T01:00:10.000+01:00"/>
+    		</event>
+    	</trace>
+
+    	<trace>
+        		<string key="concept:name" value="trace3"/>
+        		<event>
+        			<string key="concept:instance" value="a"/>
+        			<string key="concept:name" value="a"/>
+        			<string key="lifecycle:transition" value="complete"/>
+        			<date key="time:timestamp" value="2000-01-01T01:00:11.000+01:00"/>
+        		</event>
+        		<event>
+        			<string key="concept:instance" value="b"/>
+        			<string key="concept:name" value="b"/>
+        			<string key="lifecycle:transition" value="complete"/>
+        			<date key="time:timestamp" value="2000-01-01T01:00:12.000+01:00"/>
+        		</event>
+        		<event>
+        			<string key="concept:instance" value="i"/>
+        			<string key="concept:name" value="i"/>
+        			<string key="lifecycle:transition" value="complete"/>
+        			<date key="time:timestamp" value="2000-01-01T01:00:13.000+01:00"/>
+        		</event>
+        		<event>
+        			<string key="concept:instance" value="b"/>
+        			<string key="concept:name" value="b"/>
+        			<string key="lifecycle:transition" value="complete"/>
+        			<date key="time:timestamp" value="2000-01-01T01:00:14.000+01:00"/>
+        		</event>
+        		        		<event>
+                        			<string key="concept:instance" value="c"/>
+                        			<string key="concept:name" value="c"/>
+                        			<string key="lifecycle:transition" value="complete"/>
+                        			<date key="time:timestamp" value="2000-01-01T01:00:14.000+01:00"/>
+                        		</event>
+                        			<event>
+                                                        			<string key="concept:instance" value="d"/>
+                                                        			<string key="concept:name" value="d"/>
+                                                        			<string key="lifecycle:transition" value="complete"/>
+                                                        			<date key="time:timestamp" value="2000-01-01T01:00:14.000+01:00"/>
+                                                        		</event>
+        	</trace>
+
+                                                   </log>
