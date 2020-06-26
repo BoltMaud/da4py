@@ -24,18 +24,29 @@ from pm4py.visualization.petrinet import factory as vizu
 
 
 def apply(net,m0,mf,log):
-    fitness=getFitness(net,m0,mf,log,10)
-    newFitness= fitness+1
+    fitness= getFitness(net,m0,mf,log,10)
     while fitness != 0 :
-        iterOnListOfActions=iter(listOfPossibleActions(net,log))
+        listOfActions=listOfPossibleActions(net,log)
+        iterOnListOfActions=iter(listOfActions)
         while 1 :
             action = next(iterOnListOfActions)
-            actionHistory= action[0](net,action[1])
-            newFitness=getFitness(net,m0,mf,log,10)
-            if newFitness > fitness:
-                continue
-            cancelAction(actionHistory)
-        vizu.apply(net, m0,mf).view()
+            if action[0]!=removeTransition or len(net.transitions)>1:
+                actionHistory= action[0](net,m0,mf,action[1])
+                #if action[0]==removeTransition:
+                #    vizu.apply(net, m0,mf).view()
+                print(">",action[0],action[1])
+                newFitness=getFitness(net,m0,mf,log,10)
+                if newFitness < fitness:
+                    if "ifNotCancelToDel" in actionHistory[-1]:
+                        for a in actionHistory[-1]:
+                            del a
+                    break
+                print("> continue")
+                cancelAction(net,m0,mf,actionHistory)
+        print("> break for",action[0],action[1])
+        #vizu.apply(net, m0,mf).view()
+        fitness=newFitness
+        input("!")
 
 
 def listOfPossibleActions(net,log):
@@ -56,10 +67,14 @@ def removeTransition(net,m0,mf,t):
     :param t:
     :return:
     '''
-    print("<del>",t)
     history=[]
     previousPlace = next(iter(t.in_arcs)).source
     nextPlace = next(iter(t.out_arcs)).target
+    if nextPlace in mf:
+        history.append({"action":"delmf","place":nextPlace})
+        history.append({"action":"addmf","place":previousPlace})
+        del mf[nextPlace]
+        mf[previousPlace]=1
     for nextArc in nextPlace.out_arcs:
         # for each outArc of the future removed place, put into the previousPlace
         newArc = petri.utils.add_arc_from_to(previousPlace,nextArc.target,net)
@@ -68,14 +83,18 @@ def removeTransition(net,m0,mf,t):
         del nextArc
     history.append({"action":"delTransition","t":t})
     petri.utils.remove_transition(net,t)
+    t.in_arcs.clear()
+    t.out_arcs.clear()
     history.append({"action":"delPlace","p":nextPlace})
     petri.utils.remove_place(net,nextPlace)
+    nextPlace.out_arcs.clear()
+    nextPlace.in_arcs.clear()
     history.append({"action":"delArc","source":t, "target":nextPlace})
     history.append({"action":"delArc","source":previousPlace, "target":t})
     history.append({"ifNotCancelToDel":[t,previousPlace]})
     return history
 
-def cancelAction(net, history):
+def cancelAction(net,m0,mf, history):
     for a in history[:-1]:
         if a["action"]=="delArc":
             petri.utils.add_arc_from_to(a["source"],a["target"],net)
@@ -93,8 +112,16 @@ def cancelAction(net, history):
         elif a["action"]=="addPlace":
             net.places.remove(a["place"])
             del a["place"]
+        elif a["action"]=="delm0":
+            m0[a["place"]]=1
+        elif a["action"]=="addm0":
+            del m0[a["place"]]
+        elif a["action"]=="delmf":
+            mf[a["place"]]=1
+        elif a["action"]=="addmf":
+            del mf[a["place"]]
 
-def addTransition(net,labelAndPlace):
+def addTransition(net,m0,mf,labelAndPlace):
     '''
     add ARC+PLACE+ARC+TRANSITION in a net before nextPlace
     :param net:
@@ -103,9 +130,13 @@ def addTransition(net,labelAndPlace):
     :return:
     '''
     label, nextPlace=labelAndPlace
-    print("<add>",label,nextPlace)
     history=[]
     newPlace = petri.utils.add_place(net, label+"place")
+    if nextPlace == next(iter(m0)):
+        history.append({"action":"delm0","place":nextPlace})
+        history.append({"action":"addm0","place":newPlace})
+        del m0[nextPlace]
+        m0[newPlace]=1
     history.append({"action":"addPlace","place":newPlace})
     newTransition = petri.utils.add_transition(net, label+"transition",label)
     history.append({"action":"addTransition","transition":newTransition})
@@ -152,6 +183,8 @@ def getFitness(net,m0,mf,log,size_of_run):
         parameters[alignments.Variants.VERSION_STATE_EQUATION_A_STAR.value.Parameters.PARAM_SYNC_COST_FUNCTION] = sync_cost_function
         parameters[alignments.Variants.VERSION_STATE_EQUATION_A_STAR.value.Parameters.PARAM_TRACE_COST_FUNCTION] = trace_cost_function
         ali = alignments.apply(l, net, m0, mf, parameters=parameters, variant=versions.dijkstra_no_heuristics)
+        if ali == None:
+            vizu.apply(net, m0, mf).view()
         sum+=ali['cost']
     return sum
 
@@ -164,11 +197,13 @@ def getIndexOfT(t,initial_marking):
     '''
     d=1
     initialPlace=next(iter(initial_marking))
-    previousPlace=next(iter(t.in_arcs)).source
-    while(previousPlace!=initialPlace):
-        transTemp=next(iter(previousPlace.in_arcs)).source
-        previousPlace=next(iter(transTemp.in_arcs)).source
+    if initialPlace!=t:
+        previousPlace=next(iter(t.in_arcs)).source
         d+=1
+        while(previousPlace!=initialPlace):
+            transTemp=next(iter(previousPlace.in_arcs)).source
+            previousPlace=next(iter(transTemp.in_arcs)).source
+            d+=1
     return d
 
 def getPrecision(net,m0,mf,log,size_of_run):
