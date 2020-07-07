@@ -24,57 +24,118 @@ from pm4py.visualization.petrinet import factory as vizu
 
 
 def apply(net,m0,mf,log):
+    '''
+    This function takes as input a tree like petri net and tries to get the optimal
+    :param net: Petri net
+    :param m0: initial Marking
+    :param mf: final Marking
+    :param log: Log
+    :return: void
+    '''
+    # get the current fitness
     fitness= getFitness(net,m0,mf,log,10)
+    # while critieria are not optimal
     while fitness != 0 :
-        listOfActions=listOfPossibleActions(net,log)
+        # get the actions that can be done on the net
+        listOfActions=listOfPossibleActions(net,mf,log)
         iterOnListOfActions=iter(listOfActions)
+        # while the loop doesn't stop, it means that we didn't get a GOOD repair
         while 1 :
             action = next(iterOnListOfActions)
+            # don't try to remove the last transition
             if action[0]!=removeTransition or len(net.transitions)>1:
+                # launch the action!
                 actionHistory= action[0](net,m0,mf,action[1])
-                #if action[0]==removeTransition:
-                #    vizu.apply(net, m0,mf).view()
                 print(">",action[0],action[1])
+                # get the new fitness to compare with the old one
                 newFitness=getFitness(net,m0,mf,log,10)
                 if newFitness < fitness:
+                    # if good, there are some little things to fully remove and we keep the modifications
                     if "ifNotCancelToDel" in actionHistory[-1]:
                         for a in actionHistory[-1]:
                             del a
                     break
-                print("> continue")
+                # otherwise, we cancel the modifications
                 cancelAction(net,m0,mf,actionHistory)
-        print("> break for",action[0],action[1])
-        #vizu.apply(net, m0,mf).view()
+        print("! > break for",action[0],action[1])
+        input("")
+        # this is the new fitness of the model
         fitness=newFitness
-        input("!")
 
 
-def listOfPossibleActions(net,log):
+def listOfPossibleActions(net,mf,log):
+    '''
+    this function gives the list of the possible actions :
+    - remove any transition
+    - add a transition before a place
+    - add a transition in a branch after a place
+    :param net: Petri net (like a tree)
+    :param mf: final Marking ('cause we don't want to add a transition in a branch after the final place)
+    :param log: Log
+    :return: List (function removeTransition, transition) or (function addTransition/addInBranchTransition, (place, label))
+    '''
     actions= {(removeTransition,t) for t in net.transitions}
     letter=list(set([j for i in project_traces(log._list) for j in i]))
     for p in net.places:
         for l in letter:
             actions.add((addTransition,(l,p)))
+            if p not in mf:
+                actions.add((addInBranchTransition,(l,p)))
     return actions
 
 
 def removeTransition(net,m0,mf,t):
     '''
-    simply remove transition, should modify m0/mf (TODO)
-    :param net:
-    :param m0:
-    :param mf:
-    :param t:
-    :return:
+    Remove transition t
+    There are some specificities for branches:
+    - if the place before the transition is the final place and has several out_arcs then we do nothing, sorry
+    - if the place before the transition is the final place but has only one out_arc then we can remove the transition
+    and this place
+    - otherwise, when the transition is not attached to the end place, we remove the place which is after the transition
+    :param net:Petri net (tree like)
+    :param m0:Marking
+    :param mf:Making
+    :param t: Transition
+    :return: history is a list of repair items that should be recorded to be canceled (draft version?)
     '''
     history=[]
     previousPlace = next(iter(t.in_arcs)).source
     nextPlace = next(iter(t.out_arcs)).target
     if nextPlace in mf:
-        history.append({"action":"delmf","place":nextPlace})
-        history.append({"action":"addmf","place":previousPlace})
-        del mf[nextPlace]
-        mf[previousPlace]=1
+        # if the next place is the end place, then there are some specificities
+        if len(nextPlace.in_arcs) > 1:
+            # if the place has many in arcs, we do nothing, sorry
+            if len(previousPlace.out_arcs)>1:
+                return history
+            # otherwise we can remove the place before the transition and the corresponding arcs
+            else :
+                newArc = petri.utils.add_arc_from_to(next(iter(previousPlace.in_arcs)).source,nextPlace,net)
+                history.append({"action":"addArc","arc":newArc,"source":newArc.source,"target":newArc.target})
+                history.append({"action":"delArc","source":t,"target":nextPlace})
+                afterT = next(iter(t.out_arcs))
+                del afterT
+                history.append({"action":"delArc","source":previousPlace,"target":t})
+                beforeT = next(iter(t.in_arcs))
+                del beforeT
+                history.append({"action":"delArc","source":next(iter(previousPlace.in_arcs)).source,"target":previousPlace})
+                beforeP = next(iter(previousPlace.in_arcs))
+                del beforeP
+                history.append({"action":"delTransition","t":t})
+                petri.utils.remove_transition(net,t)
+                t.in_arcs.clear()
+                t.out_arcs.clear()
+                history.append({"action":"delPlace","p":previousPlace})
+                petri.utils.remove_place(net,previousPlace)
+                previousPlace.out_arcs.clear()
+                previousPlace.in_arcs.clear()
+                history.append({"ifNotCancelToDel":None})
+                return history
+        else :
+            # if the end place has only one out arc, then we just modify which place is the end place
+            history.append({"action":"delmf","place":nextPlace})
+            history.append({"action":"addmf","place":previousPlace})
+            del mf[nextPlace]
+            mf[previousPlace]=1
     for nextArc in nextPlace.out_arcs:
         # for each outArc of the future removed place, put into the previousPlace
         newArc = petri.utils.add_arc_from_to(previousPlace,nextArc.target,net)
@@ -95,6 +156,15 @@ def removeTransition(net,m0,mf,t):
     return history
 
 def cancelAction(net,m0,mf, history):
+    '''
+    From the list of history, we cancel the actions ie we do the contrary.
+    Don't touch the last item because it's for removing fully some items
+    :param net: Petri net (tree like)
+    :param m0: Marking
+    :param mf: Marking
+    :param history:  history is a list of repair items that should be recorded to be canceled (draft version?)
+    :return: void
+    '''
     for a in history[:-1]:
         if a["action"]=="delArc":
             petri.utils.add_arc_from_to(a["source"],a["target"],net)
@@ -154,6 +224,27 @@ def addTransition(net,m0,mf,labelAndPlace):
     newArc=petri.utils.add_arc_from_to(newTransition,nextPlace,net)
     history.append({"action":"addArc","arc":newArc,"source": newTransition,"target":nextPlace})
     history.append({"ifNotCancelToDel":toDel})
+    return history
+
+def addInBranchTransition(net, m0, mf,labelAndPlace):
+    '''
+    add a new branch from the place to the endplace
+    :param net:
+    :param m0:
+    :param mf:
+    :param labelAndPlace:
+    :return:
+    '''
+    history=[]
+    label, prevPlace=labelAndPlace
+    newTransition = petri.utils.add_transition(net, label+"transition",label)
+    history.append({"action":"addTransition","transition":newTransition})
+    newArc=petri.utils.add_arc_from_to(prevPlace,newTransition,net)
+    history.append({"action":"addArc","arc":newArc,"source": prevPlace,"target":newTransition})
+    endPlace= next(iter(mf))
+    newArc=petri.utils.add_arc_from_to(newTransition,endPlace,net)
+    history.append({"action":"addArc","arc":newArc,"source": newTransition,"target":endPlace})
+    history.append({"ifNotCancelToDel":None})
     return history
 
 
