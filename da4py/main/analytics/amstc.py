@@ -25,8 +25,8 @@ from copy import deepcopy
 from pm4py.algo.filtering.log.variants.variants_filter import get_variants
 from pm4py.objects import petri
 from pm4py.objects.log.util.log import project_traces
-from pm4py.visualization.petrinet import factory as vizu
-import pm4py.algo.conformance.alignments.factory as alignments
+#from pm4py.visualization.petrinet import factory as vizu
+from pm4py.algo.conformance import alignments
 from pm4py.objects.log.util import xes as xes_util
 import editdistance
 
@@ -603,7 +603,7 @@ def samplingVariantsForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, ma
                         break
             # align centroid and entire log with alignments
             if not bool_clustered:
-                alignment=alignments.apply_trace(variants[l][0],centroid,c_m0,c_mf)
+                alignment=alignments.algorithm.apply(variants[l][0],centroid,c_m0,c_mf)
                 if alignment['cost']< 10000*((max_d+1)):
                     counter=-1
                     traces_of_clusters+=variants[l]
@@ -706,7 +706,7 @@ def samplingForAmstc(net, m0, mf, log,sample_size,size_of_run, max_d, max_t, m ,
                                     bool_clustered=True
                                     break
                         if not bool_clustered:
-                            alignment=alignments.apply_trace(l,centroid,c_m0,c_mf)
+                            alignment=alignments.algorithm.apply(l,centroid,c_m0,c_mf)
                             if alignment['cost']< 10000*((max_d+1)):
                                 counter=-1
                                 traces_of_clusters.append(l)

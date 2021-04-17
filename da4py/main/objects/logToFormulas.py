@@ -24,7 +24,7 @@ from threading import Thread
 
 from pm4py.objects import petri
 from pm4py.objects.log.util.log import project_traces
-from pm4py.visualization.petrinet import factory as vizu
+#from pm4py.visualization.petrinet import factory as vizu
 import numpy as np
 from random import sample
 BOOLEAN_VAR_TRACES_ACTIONS = "lambda_jia"

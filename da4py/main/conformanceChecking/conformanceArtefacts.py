@@ -107,6 +107,7 @@ class ConformanceArtefacts:
 
         # solve the formulas
         wncf = self.__createWncf(initialisationFormulas, distanceFormula, MULTI_ALIGNMENT)
+
         self.__solveWncf(wncf)
         return 0
 
@@ -291,11 +292,13 @@ class ConformanceArtefacts:
                     dist=1
                     if self.__distance_type==EDIT_DISTANCE:
                         for l in self.__traces:
+                            l = l[:self.__size_of_run]
                             if levenshtein(aa,l)/ (len(aa)+len(l)) < dist:
                                 dist=levenshtein(aa,l)/ (len(aa)+len(l))
                     if self.__distance_type==HAMMING_DISTANCE:
                         for l in self.__traces:
-                            if hamming(aa,l)/ (len(aa)+len(l)) < dist:
+                            l = l[:self.__max_d]
+                            if hamming(aa,l)/ max(len(aa),len(l)) < dist:
                                 dist=hamming(aa,l)/ max(len(aa),len(l))
                     return 1-dist
                 except:
@@ -574,7 +577,7 @@ def antiAlignmentPrecision(net, m0,mf, log, epsilon,distance="edit",nbMaxOfTrial
             dist=1
             for l in traces:
                 if distance==HAMMING_DISTANCE:
-                    if hamming(aa,l)/ (len(aa)+len(l)) < dist:
+                    if hamming(aa,l)/ max(len(aa),len(l)) < dist:
                         dist=hamming(aa,l)/ max(len(aa),len(l))
                 if distance==EDIT_DISTANCE:
                     if levenshtein(aa,l)/ (len(aa)+len(l)) < dist:

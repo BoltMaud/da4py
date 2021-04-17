@@ -20,7 +20,7 @@ Scientific paper : _Alignment-based trace clustering_
 
 from da4py.main.utils.formulas import Or, And
 
-def is_run(size_of_run, places, transitions, m0, mf, m_ip, tau_it,reach_final):
+def is_run(size_of_run, places, transitions, m0, mf, m_ip, tau_it,reach_final,space_between_fired):
     '''
     The is_run method allows one to create the boolean paths of the petri net.
     :param size_of_run (int): maximal size of the run
@@ -36,12 +36,12 @@ def is_run(size_of_run, places, transitions, m0, mf, m_ip, tau_it,reach_final):
     if reach_final:
         positives+=[m_ip([size_of_run,places.index(m)]) for m in mf]
     negatives = [m_ip([0, places.index(m)]) for m in places if m not in m0]
-    formulas = [is_action(places, transitions, m0, i, m_ip, tau_it) for i in range(1, size_of_run + 1)]
+    formulas = [is_action(places, transitions, m0, i, m_ip, tau_it,space_between_fired) for i in range(space_between_fired, size_of_run + 1,space_between_fired)]
     run_of_pn = And(positives, negatives, formulas)
     return run_of_pn
 
 
-def is_action(places, transitions, m0, i, m_ip, tau_it):
+def is_action(places, transitions, m0, i, m_ip, tau_it,space_between_fired):
     '''
     The is_action method used by is_run creates the formula of each instant. Which transition fired ?
     :param places (list) :
@@ -59,11 +59,11 @@ def is_action(places, transitions, m0, i, m_ip, tau_it):
     formulas=[Or([],[],or_formulas)]
     # if transition t fires at instant i, then we have the good marking
     for t in transitions:
-        formulas.append(Or([], [tau_it([i, transitions.index(t)])], [is_transition(places, t, i, m_ip)]))
+        formulas.append(Or([], [tau_it([i, transitions.index(t)])], [is_transition(places, t, i, m_ip,space_between_fired)]))
     return And([], [], formulas)
 
 
-def is_transition(places, transition, i, m_ip):
+def is_transition(places, transition, i, m_ip,space_between_fired):
     '''
     The is_transition method used by is_action creates the formula of a firing transition. Which marking is needed ?
     :param places (list) :
@@ -78,19 +78,19 @@ def is_transition(places, transition, i, m_ip):
 
     for p in places:
         if p in prePlaces and p in postPlaces:
-            formulas.append(And([m_ip([i, places.index(p)]), m_ip([i - 1, places.index(p)])], [], []))
+            formulas.append(And([m_ip([i, places.index(p)]), m_ip([i - space_between_fired, places.index(p)])], [], []))
         elif p in prePlaces and p not in postPlaces:
-            formulas.append(And([m_ip([i - 1, places.index(p)])], [m_ip([i, places.index(p)])], []))
+            formulas.append(And([m_ip([i - space_between_fired, places.index(p)])], [m_ip([i, places.index(p)])], []))
         elif p not in prePlaces and p in postPlaces:
-            formulas.append(And([m_ip([i, places.index(p)])], [m_ip([i - 1, places.index(p)])], []))
+            formulas.append(And([m_ip([i, places.index(p)])], [m_ip([i - space_between_fired, places.index(p)])], []))
         elif p not in prePlaces and p not in postPlaces:
-            formulas.append(Or([], [], [And([m_ip([i, places.index(p)]), m_ip([i - 1, places.index(p)])], [], []),
-                                        And([], [m_ip([i, places.index(p)]), m_ip([i - 1, places.index(p)])], [])]))
+            formulas.append(Or([], [], [And([m_ip([i, places.index(p)]), m_ip([i - space_between_fired, places.index(p)])], [], []),
+                                        And([], [m_ip([i, places.index(p)]), m_ip([i - space_between_fired, places.index(p)])], [])]))
     return And([], [], formulas)
 
 
 def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, reach_final, label_m="m_ip", label_t="tau_it",
-                     silent_transition=None,transitions=None):
+                     silent_transition=None,transitions=None,space_between_fired=1):
     '''
     This function returns the SAT formulas of a petrinet given label of variables, size_of_run
     :param net: petri net of the librairie pm4py
@@ -118,4 +118,4 @@ def petri_net_to_SAT(net, m0, mf, variablesGenerator, size_of_run, reach_final, 
     variablesGenerator.add(label_t, [(1, size_of_run + 1), (0, len(transitions))])
 
     return (is_run(size_of_run, places, transitions, m0, mf, variablesGenerator.getFunction(label_m),
-                   variablesGenerator.getFunction(label_t), reach_final), places, transitions, silent_transitions)
+                   variablesGenerator.getFunction(label_t), reach_final,space_between_fired), places, transitions, silent_transitions)

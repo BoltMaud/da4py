@@ -608,9 +608,9 @@ def levenshtein(s, t):
         return len(t)
     if len(t) == 0 :
         return len(s)
-    if s[-1] in ["w",None,"tau"]:
+    if s[-1] in ["w",None,"tau"] or "tau" in s[-1] or "skip" in s[-1]:
         return levenshtein(s[:-1], t)
-    if t[-1] in ["w",None,"tau"] :
+    if t[-1] in ["w",None,"tau"]  or "tau" in s[-1] or "skip" in s[-1]:
         return levenshtein(s, t[:1])
     if s[-1] == t[-1] :
         return levenshtein(s[:-1], t[:-1])
@@ -625,7 +625,7 @@ def hamming(s,t):
     if len(t) == 0 :
         while "w" in s: s.remove("w")
         return len(s)
-    if s[0] == t[0] or s[0] in ["tau",None] or t[0] in ["tau",None] :
+    if s[0] == t[0] or s[0] in ["tau",None] or t[0] in ["tau",None] or  "tau"in s[0] or "skip" in s[0]:
         return hamming(s[1:], t[1:])
     else:
         return hamming(s[1:], t[1:])+1
